@@ -19,7 +19,11 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 csrf = CSRFProtect(app)
 
-# Modellek importálása
 from WebApp.models.user import User
+from WebApp.models.product import Product
 from WebApp.models.order import Order
+from WebApp.models.orderitem import OrderItem
+from WebApp.models.shipment import Shipment
 from WebApp.models.warehouse import Warehouse
+from WebApp.models.storagelocation import StorageLocation
+from WebApp.models.complaint import Complaint
