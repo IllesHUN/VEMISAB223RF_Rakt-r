@@ -11,3 +11,5 @@ class StorageLocation(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=True)
     quantity = db.Column(db.Integer, default=0, nullable=False)
     updated_at = db.Column(db.DateTime, server_default=text("UTC_TIMESTAMP()"), nullable=False)
+
+    product = db.relationship('Product', foreign_keys=[product_id])

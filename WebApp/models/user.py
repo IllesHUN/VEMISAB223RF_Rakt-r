@@ -12,3 +12,6 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), default='megrendelo', nullable=False)
     created_at = db.Column(db.DateTime, server_default=text("UTC_TIMESTAMP()"), nullable=False)
+
+    orders = db.relationship('Order', backref='buyer', lazy=True, foreign_keys='Order.buyer_id')
+    complaints = db.relationship('Complaint', backref='user', lazy=True)

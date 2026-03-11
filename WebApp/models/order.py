@@ -15,3 +15,9 @@ class Order(db.Model):
                            onupdate=text("UTC_TIMESTAMP()"), nullable=False)
 
     
+    
+    items = db.relationship('OrderItem', backref='order', lazy=True,
+                             cascade='all, delete-orphan')
+    shipments = db.relationship('Shipment', backref='order', lazy=True)
+    complaints = db.relationship('Complaint', backref='order', lazy=True)
+    supplier = db.relationship('User', foreign_keys=[supplier_id])

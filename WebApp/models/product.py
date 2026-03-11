@@ -10,3 +10,5 @@ class Product(db.Model):
     description = db.Column(db.Text, nullable=True)
     unit = db.Column(db.String(50), nullable=False, default='db')
     price = db.Column(db.Float, nullable=False, default=0.0)
+
+    order_items = db.relationship('OrderItem', backref='product', lazy=True)

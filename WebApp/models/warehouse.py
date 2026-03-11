@@ -8,3 +8,5 @@ class Warehouse(db.Model):
     name = db.Column(db.String(255), nullable=False)
     address = db.Column(db.String(500), nullable=True)
     capacity = db.Column(db.Integer, nullable=True)
+
+    locations = db.relationship('StorageLocation', backref='warehouse', lazy=True, cascade='all, delete-orphan')

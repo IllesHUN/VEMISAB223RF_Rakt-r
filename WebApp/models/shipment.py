@@ -13,3 +13,5 @@ class Shipment(db.Model):
     delivered_at = db.Column(db.DateTime, nullable=True)
     note = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, server_default=text("UTC_TIMESTAMP()"), nullable=False)
+
+    carrier = db.relationship('User', foreign_keys=[carrier_id])
