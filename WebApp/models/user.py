@@ -10,6 +10,5 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     phone = db.Column(db.String(50), nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
-    # szerepkörök: megrendelo, beszallito, fuvarozo, raktaros, admin
     role = db.Column(db.String(50), default='megrendelo', nullable=False)
     created_at = db.Column(db.DateTime, server_default=text("UTC_TIMESTAMP()"), nullable=False)
