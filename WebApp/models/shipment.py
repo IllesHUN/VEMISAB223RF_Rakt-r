@@ -1,10 +1,8 @@
 from WebApp import db
 from sqlalchemy.sql import text
 
-
 class Shipment(db.Model):
     __tablename__ = 'shipment'
-
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
     carrier_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
@@ -14,4 +12,6 @@ class Shipment(db.Model):
     note = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, server_default=text("UTC_TIMESTAMP()"), nullable=False)
 
-    carrier = db.relationship('User', foreign_keys=[carrier_id])
+    
+    order = db.relationship('Order', back_populates='shipments')
+    carrier = db.relationship('User', foreign_keys=[carrier_id], back_populates='carrier_shipments')

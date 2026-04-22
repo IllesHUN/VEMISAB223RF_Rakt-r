@@ -1,10 +1,8 @@
 from WebApp import db
 from sqlalchemy.sql import text
 
-
 class StorageLocation(db.Model):
     __tablename__ = 'storage_location'
-
     id = db.Column(db.Integer, primary_key=True)
     warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouse.id'), nullable=False)
     code = db.Column(db.String(100), nullable=False)
@@ -12,4 +10,6 @@ class StorageLocation(db.Model):
     quantity = db.Column(db.Integer, default=0, nullable=False)
     updated_at = db.Column(db.DateTime, server_default=text("UTC_TIMESTAMP()"), nullable=False)
 
-    product = db.relationship('Product', foreign_keys=[product_id])
+    
+    warehouse = db.relationship('Warehouse', back_populates='locations')
+    product = db.relationship('Product', foreign_keys=[product_id], back_populates='storage_locations')
