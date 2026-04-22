@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+{% block title %}- Főoldal{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🏭 Üdvözöljük, {{ session.get('user_name') }}!</h1>
+    <span class="role-badge" style="font-size: 16px; padding: 8px 16px;">
+        {{ session.get('role') }}
+    </span>
+</div>
+
+<!-- ===== MEGRENDELŐ ===== -->
+{% if session.get('role') == 'megrendelo' %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.get('total_orders', 0) }}</div>
+        <div class="stat-label">Összes rendelésem</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="page-header">
+        <h3>📦 Legutóbbi rendeléseim</h3>
+        <a href="{{ url_for('order_new') }}" class="btn btn-primary">+ Új rendelés</a>
+    </div>
+    {% if stats.get('orders') %}
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Státusz</th>
+                <th>Dátum</th>
+                <th>Műveletek</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in stats.orders %}
+            <tr>
+                <td><strong>#{{ order.id }}</strong></td>
+                <td><span class="badge badge-{{ order.status }}">{{ order.status }}</span></td>
+                <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    <a href="{{ url_for('order_detail', order_id=order.id) }}" class="btn btn-info btn-sm">Részletek</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: #adb5bd; font-style: italic;">Még nincs leadott rendelésed.</p>
+    {% endif %}
+    <div style="margin-top: 15px;">
+        <a href="{{ url_for('order_list') }}" class="btn btn-secondary btn-sm">Összes rendelés →</a>
+    </div>
+</div>
+{% endif %}
+
+<!-- ===== BESZÁLLÍTÓ ===== -->
+{% if session.get('role') == 'beszallito' %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.get('total_orders', 0) }}</div>
+        <div class="stat-label">Hozzám rendelt rendelések</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="page-header">
+        <h3>📦 Aktuális rendelések</h3>
+        <a href="{{ url_for('order_list') }}" class="btn btn-secondary btn-sm">Összes →</a>
+    </div>
+    {% if stats.get('orders') %}
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Státusz</th>
+                <th>Dátum</th>
+                <th>Műveletek</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in stats.orders %}
+            <tr>
+                <td><strong>#{{ order.id }}</strong></td>
+                <td><span class="badge badge-{{ order.status }}">{{ order.status }}</span></td>
+                <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    <a href="{{ url_for('order_detail', order_id=order.id) }}" class="btn btn-info btn-sm">Részletek</a>
+                    <a href="{{ url_for('shipment_new', order_id=order.id) }}" class="btn btn-success btn-sm">🚚 Szállítás</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: #adb5bd; font-style: italic;">Nincs hozzád rendelt rendelés.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ===== FUVAROZÓ ===== -->
+{% if session.get('role') == 'fuvarozo' %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.get('total_shipments', 0) }}</div>
+        <div class="stat-label">Hozzám rendelt fuvarok</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="page-header">
+        <h3>🚚 Aktuális fuvarjaim</h3>
+        <a href="{{ url_for('shipment_list') }}" class="btn btn-secondary btn-sm">Összes →</a>
+    </div>
+    {% if stats.get('shipments') %}
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Rendelés</th>
+                <th>Státusz</th>
+                <th>Várható érkezés</th>
+                <th>Műveletek</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for shipment in stats.shipments %}
+            <tr>
+                <td><strong>#{{ shipment.id }}</strong></td>
+                <td>#{{ shipment.order_id }}</td>
+                <td><span class="badge badge-{{ shipment.status }}">{{ shipment.status }}</span></td>
+                <td>{{ shipment.expected_at.strftime('%Y-%m-%d %H:%M') if shipment.expected_at else '-' }}</td>
+                <td>
+                    <a href="{{ url_for('shipment_detail', shipment_id=shipment.id) }}" class="btn btn-info btn-sm">Részletek</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: #adb5bd; font-style: italic;">Nincs hozzád rendelt fuvar.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ===== RAKTÁROS / ADMIN ===== -->
+{% if session.get('role') in ['raktaros', 'admin'] %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.get('orders', [])|length }}</div>
+        <div class="stat-label">Aktív rendelések</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.get('shipments', [])|length }}</div>
+        <div class="stat-label">Aktív szállítmányok</div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <!-- Rendelések -->
+    <div class="card">
+        <div class="page-header">
+            <h3>📦 Legújabb rendelések</h3>
+            <a href="{{ url_for('order_list') }}" class="btn btn-secondary btn-sm">Összes →</a>
+        </div>
+        {% if stats.get('orders') %}
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>
+                        <a href="{{ url_for('index', sort='status', order='asc' if order == 'desc' else 'desc') }}"
+                           style="color: #e94560; text-decoration: none;">
+                            STÁTUSZ {{ '↑' if order == 'asc' else '↓' }}
+                        </a>
+                    </th>
+                    <th>Dátum</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in stats.orders %}
+                <tr>
+                    <td><a href="{{ url_for('order_detail', order_id=order.id) }}" style="color: #e94560;">#{{ order.id }}</a></td>
+                    <td><span class="badge badge-{{ order.status }}">{{ order.status }}</span></td>
+                    <td>{{ order.created_at.strftime('%Y-%m-%d') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: #adb5bd; font-style: italic;">Nincs rendelés.</p>
+        {% endif %}
+    </div>
+
+    <!-- Szállítmányok -->
+    <div class="card">
+        <div class="page-header">
+            <h3>🚚 Legújabb szállítmányok</h3>
+            <a href="{{ url_for('shipment_list') }}" class="btn btn-secondary btn-sm">Összes →</a>
+        </div>
+        {% if stats.get('shipments') %}
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>
+                        <a href="{{ url_for('index', sort='status', order='asc' if order == 'desc' else 'desc') }}"
+                           style="color: #e94560; text-decoration: none;">
+                            STÁTUSZ {{ '↑' if order == 'asc' else '↓' }}
+                        </a>
+                    </th>
+                    <th>Várható</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for shipment in stats.shipments %}
+                <tr>
+                    <td><a href="{{ url_for('shipment_detail', shipment_id=shipment.id) }}" style="color: #e94560;">#{{ shipment.id }}</a></td>
+                    <td><span class="badge badge-{{ shipment.status }}">{{ shipment.status }}</span></td>
+                    <td>{{ shipment.expected_at.strftime('%Y-%m-%d') if shipment.expected_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: #adb5bd; font-style: italic;">Nincs szállítmány.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div style="margin-top: 20px; display: flex; gap: 15px;">
+    <a href="{{ url_for('warehouse_list') }}" class="btn btn-primary">🏪 Raktárak kezelése</a>
+    <a href="{{ url_for('order_list') }}" class="btn btn-info">📦 Rendelések kezelése</a>
+    <a href="{{ url_for('shipment_list') }}" class="btn btn-success">🚚 Szállítmányok kezelése</a>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}- Bejelentkezés{% endblock %}
+
+{% block content %}
+<div style="max-width: 450px; margin: 60px auto;">
+    <div class="card">
+        <h2 style="text-align: center; margin-bottom: 25px;">🔐 Bejelentkezés</h2>
+
+        <form method="POST">
+            {{ form.hidden_tag() }}
+
+            <div class="form-group">
+                {{ form.email.label }}
+                {{ form.email(placeholder="pelda@email.com") }}
+                {% if form.email.errors %}
+                    <div class="form-error">{{ form.email.errors[0] }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                {{ form.password.label }}
+                {{ form.password(placeholder="••••••••") }}
+                {% if form.password.errors %}
+                    <div class="form-error">{{ form.password.errors[0] }}</div>
+                {% endif %}
+            </div>
+
+            <div style="margin-top: 25px;">
+                {{ form.submit(class="btn btn-primary", style="width: 100%; padding: 12px; font-size: 16px;") }}
+            </div>
+        </form>
+
+        <p style="text-align: center; margin-top: 20px; color: #adb5bd; font-size: 14px;">
+            Még nincs fiókod?
+            <a href="{{ url_for('register') }}" style="color: #e94560;">Regisztrálj itt!</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
