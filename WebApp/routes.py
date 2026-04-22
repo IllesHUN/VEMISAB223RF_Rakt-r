@@ -14,7 +14,6 @@ from WebApp.forms.registerform import RegisterForm
 from WebApp.forms.shipmentform import ShipmentForm, ShipmentStatusForm
 from WebApp.forms.complaintform import ComplaintForm
 from WebApp.models.product import Product
-from WebApp.models.product import Product
 
 um = UserManager(db)
 om = OrderManager(db)
@@ -302,51 +301,15 @@ def order_status_update(order_id):
     return redirect(url_for('order_detail', order_id=order_id))
 
 
-# ============ SZÁLLÍTMÁNYOK ============
-
-@app.route('/shipments')
-@login_required
-def shipment_list():
-    page = request.args.get('page', 1, type=int)
-    status = request.args.get('status', '', type=str)
-    role = session.get('role')
-    user_id = session.get('user_id')
-
-    if role == 'fuvarozo':
-        pagination = sm.list_shipments(
-            page=page, carrier_id=user_id,
-            status=status if status else None)
-    else:
-        pagination = sm.list_shipments(
-            page=page, status=status if status else None)
-
-    return render_template('shipment/list.html', pagination=pagination)
 
 
-@app.route('/shipment/<int:shipment_id>')
-@login_required
-def shipment_detail(shipment_id):
-    shipment = sm.get_shipment(shipment_id)
-    if not shipment:
-        flash('Szállítmány nem található!', 'danger')
-        return redirect(url_for('shipment_list'))
 
-    status_form = ShipmentStatusForm()
 
-    # Fuvarozók listája (raktáros/admin számára)
-    carriers = um.list_users(role='fuvarozo', page=1, per_page=100).items
-
-    return render_template('shipment/detail.html',
-                           shipment=shipment,
-                           status_form=status_form,
-                           carriers=carriers)
 
 
 @app.route('/products')
+@login_required                      
 def product_list():
-    if not session.get('user_id'):
-        return redirect(url_for('login'))
-    
     products = pm.list_products(page=1, per_page=1000).items
     return render_template('products/list.html', products=products)
 
@@ -501,8 +464,37 @@ def warehouse_list():
     pagination = wm.list_warehouses(page=page)
     return render_template('warehouse/list.html', pagination=pagination)
 
+@app.route('/warehouse/new', methods=['POST'])
+@admin_required
+def warehouse_new():
+    name = request.form.get('name')
+    address = request.form.get('address')
+    capacity = request.form.get('capacity', type=int)
 
+    wh = wm.create_warehouse(name, address, capacity)
+    if wh:
+        flash(f'✅ Raktár létrehozva: {wh.name}', 'success')
+    else:
+        flash('❌ Hiba történt!', 'danger')
+    return redirect(url_for('warehouse_list'))
 
+@app.route('/warehouse/<int:warehouse_id>')
+@login_required
+@raktaros_required
+def warehouse_detail(warehouse_id):
+    warehouse = wm.get_warehouse(warehouse_id)
+    if not warehouse:
+        flash('Raktár nem található!', 'danger')
+        return redirect(url_for('warehouse_list'))
+
+    page = request.args.get('page', 1, type=int)
+    stock = wm.get_stock(warehouse_id, page=page)
+    all_products = pm.list_products(page=1, per_page=1000).items
+
+    return render_template('warehouse/detail.html',
+                           warehouse=warehouse,
+                           stock=stock,
+                           all_products=all_products)
 
 @app.route('/warehouse/<int:warehouse_id>/add_stock', methods=['POST'])
 @login_required
@@ -535,3 +527,228 @@ def warehouse_remove_stock(warehouse_id):
         flash(f'❌ {message}', 'danger')
 
     return redirect(url_for('warehouse_detail', warehouse_id=warehouse_id))
+
+
+@app.route('/complaints')
+@login_required
+def complaint_list():
+    page = request.args.get('page', 1, type=int)
+    user_id = session.get('user_id')
+    role = session.get('role')
+
+    if role == 'megrendelo':
+        pagination = cm.list_complaints(page=page, user_id=user_id)
+    elif role in ['admin', 'raktaros']:
+        pagination = cm.list_complaints(page=page)
+    else:
+        flash('⛔ Nincs jogosultságod!', 'danger')
+        return redirect(url_for('index'))
+
+    return render_template('complaint/list.html', pagination=pagination)
+
+@app.route('/complaint/<int:complaint_id>/status', methods=['POST'])
+@admin_required
+def complaint_status_update(complaint_id):
+    status = request.form.get('status')
+    if cm.update_status(complaint_id, status):
+        flash(f'✅ Reklamáció státusza frissítve!', 'success')
+    else:
+        flash('❌ Hiba történt!', 'danger')
+    return redirect(url_for('complaint_list'))
+
+@app.route('/order/<int:order_id>/complaint/new', methods=['GET', 'POST'])
+@login_required
+@role_required('megrendelo', 'admin')
+def complaint_new(order_id):
+    order = om.get_order(order_id)
+    if not order:
+        flash('Rendelés nem található!', 'danger')
+        return redirect(url_for('order_list'))
+
+    form = ComplaintForm()
+    if form.validate_on_submit():
+        complaint = cm.create_complaint(
+            user_id=session['user_id'],
+            order_id=order_id,
+            complaint_type=form.type.data,
+            description=form.description.data
+        )
+        if complaint:
+            flash('✅ Reklamáció sikeresen beküldve!', 'success')
+            return redirect(url_for('order_detail', order_id=order_id))
+        flash('❌ Hiba történt!', 'danger')
+
+    return render_template('complaint/new.html', form=form, order=order)
+
+
+
+@app.route('/complaint/<int:complaint_id>', methods=['GET', 'POST'])
+@login_required
+def complaint_detail(complaint_id):
+    complaint = cm.get_complaint(complaint_id)
+    if not complaint:
+        flash('Reklamáció nem található!', 'danger')
+        return redirect(url_for('complaint_list'))
+
+    # Megrendelő csak saját reklamációját láthatja
+    if session.get('role') == 'megrendelo':
+        if complaint.user_id != session['user_id']:
+            flash('⛔ Nincs jogosultságod!', 'danger')
+            return redirect(url_for('complaint_list'))
+
+    if request.method == 'POST' and session.get('role') in ['admin', 'raktaros']:
+        new_status = request.form.get('status')
+        response_text = request.form.get('response', '')
+        cm.update_status(complaint_id, status=new_status, response=response_text)
+        flash('✅ Reklamáció frissítve!', 'success')
+        return redirect(url_for('complaint_detail', complaint_id=complaint_id))
+
+    return render_template('complaint/detail.html', complaint=complaint)
+
+
+@app.route('/admin/stats')
+@login_required
+@role_required('admin')
+def admin_stats():
+    from sqlalchemy import func, extract
+    from WebApp.models.orderitem import OrderItem
+    from WebApp.models.order import Order
+    from WebApp.models.user import User
+
+    # Havi rendelésszám (idei év)
+    monthly_orders = db.session.query(
+        extract('month', Order.created_at).label('month'),
+        func.count(Order.id).label('count')
+    ).filter(
+        extract('year', Order.created_at) == 2026
+    ).group_by('month').order_by('month').all()
+
+    # Havi bevétel
+    monthly_revenue = db.session.query(
+        extract('month', Order.created_at).label('month'),
+        func.sum(OrderItem.quantity * OrderItem.unit_price).label('revenue')
+    ).join(OrderItem, Order.id == OrderItem.order_id)\
+     .filter(extract('year', Order.created_at) == 2026)\
+     .group_by('month').order_by('month').all()
+
+    # Top 5 megrendelő
+    top_buyers = db.session.query(
+        User.name,
+        func.count(Order.id).label('count')
+    ).join(Order, User.id == Order.buyer_id)\
+     .group_by(User.id)\
+     .order_by(func.count(Order.id).desc())\
+     .limit(5).all()
+
+    # Státusz megoszlás
+    status_counts = db.session.query(
+        Order.status,
+        func.count(Order.id).label('count')
+    ).group_by(Order.status).all()
+
+    return render_template('admin/stats.html',
+                           monthly_orders=monthly_orders,
+                           monthly_revenue=monthly_revenue,
+                           top_buyers=top_buyers,
+                           status_counts=status_counts)
+
+@app.route('/api/products', methods=['GET'])
+@login_required
+def api_products():
+    products = pm.list_products(page=1, per_page=1000).items
+    return jsonify({
+        'success': True,
+        'total': len(products),
+        'products': [
+            {
+                'id': p.id,
+                'name': p.name,
+                'sku': p.sku,
+                'description': p.description,
+                'unit': p.unit,
+                'price': p.price
+            } for p in products
+        ]
+    }), 200
+
+
+@app.route('/api/stock', methods=['GET'])
+@login_required
+def api_stock():
+    from WebApp.models.storagelocation import StorageLocation
+
+    stocks = db.session.query(StorageLocation).all()
+    return jsonify({
+        'success': True,
+        'total': len(stocks),
+        'stock': [
+            {
+                'warehouse_id': s.warehouse_id,
+                'product_id': s.product_id,
+                'product_name': s.product.name if s.product else None,
+                'quantity': s.quantity,
+                'location_code': s.code,
+            } for s in stocks
+        ]
+    }), 200
+
+
+
+@app.route('/api/shipments', methods=['GET'])
+@login_required
+def api_shipments():
+    role = session.get('role')
+    user_id = session.get('user_id')
+
+    if role == 'fuvarozo':
+        shipments = sm.list_shipments(carrier_id=user_id, page=1, per_page=1000).items
+    else:
+        shipments = sm.list_shipments(page=1, per_page=1000).items
+
+    return jsonify({
+        'success': True,
+        'total': len(shipments),
+        'shipments': [
+            {
+                'id': s.id,
+                'order_id': s.order_id,
+                'status': s.status,
+                'expected_at': s.expected_at.strftime('%Y-%m-%d') if s.expected_at else None,
+                'carrier_id': s.carrier_id,
+                'note': s.note
+            } for s in shipments
+        ]
+    }), 200
+
+@app.route('/api/orders', methods=['GET'])
+@login_required
+def api_orders():
+    """API végpont - megrendelések JSON formátumban."""
+    from WebApp.models.order import Order
+    from sqlalchemy.orm import joinedload
+
+    orders = db.session.query(Order).options(
+        joinedload(Order.items),
+        joinedload(Order.shipments)
+    ).all()
+
+    return jsonify({
+        'success': True,
+        'total': len(orders),
+        'orders': [
+            {
+                'id': o.id,
+                'buyer_id': o.buyer_id,
+                'status': o.status,
+                'created_at': o.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'items': [
+                    {
+                        'product_id': i.product_id,
+                        'quantity': i.quantity,
+                        'unit_price': i.unit_price
+                    } for i in o.items
+                ],
+                'shipments_count': len(o.shipments)
+            } for o in orders
+        ]
+    }), 200
