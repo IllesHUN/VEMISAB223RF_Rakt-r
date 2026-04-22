@@ -396,4 +396,142 @@ def product_edit(product_id):
 
     return render_template('products/new_edit.html', product=product)
 
+# ============ SZÁLLÍTMÁNYOK ============
 
+@app.route('/shipments')
+@login_required
+def shipment_list():
+    page = request.args.get('page', 1, type=int)
+    status = request.args.get('status', '', type=str)
+    role = session.get('role')
+    user_id = session.get('user_id')
+
+    if role == 'fuvarozo':
+        pagination = sm.list_shipments(
+            page=page, carrier_id=user_id,
+            status=status if status else None)
+    else:
+        pagination = sm.list_shipments(
+            page=page, status=status if status else None)
+
+    return render_template('shipment/list.html', pagination=pagination)
+
+
+@app.route('/shipment/<int:shipment_id>')
+@login_required
+def shipment_detail(shipment_id):
+    shipment = sm.get_shipment(shipment_id)
+    if not shipment:
+        flash('Szállítmány nem található!', 'danger')
+        return redirect(url_for('shipment_list'))
+
+    status_form = ShipmentStatusForm()
+
+    # Fuvarozók listája (raktáros/admin számára)
+    carriers = um.list_users(role='fuvarozo', page=1, per_page=100).items
+
+    return render_template('shipment/detail.html',
+                           shipment=shipment,
+                           status_form=status_form,
+                           carriers=carriers)
+
+
+
+@app.route('/order/<int:order_id>/shipment/new', methods=['GET', 'POST'])
+@login_required
+@role_required('beszallito', 'admin')
+def shipment_new(order_id):
+    order = om.get_order(order_id)
+    if not order:
+        flash('Rendelés nem található!', 'danger')
+        return redirect(url_for('order_list'))
+
+    form = ShipmentForm()
+    if form.validate_on_submit():
+        shipment = sm.create_shipment(
+            order_id=order_id,
+            expected_at=form.expected_at.data,
+            note=form.note.data
+        )
+        if shipment:
+            om.update_status(order_id, 'szallitas_alatt')
+            flash('✅ Szállítás rögzítve!', 'success')
+            return redirect(url_for('order_detail', order_id=order_id))
+        flash('❌ Hiba történt!', 'danger')
+
+    return render_template('shipment/new.html', form=form, order=order)
+
+
+@app.route('/shipment/<int:shipment_id>/status', methods=['POST'])
+@login_required
+@role_required('fuvarozo', 'admin')
+def shipment_status_update(shipment_id):
+    status = request.form.get('status')
+    shipment = sm.get_shipment(shipment_id)
+
+    if sm.update_status(shipment_id, status):
+        if status == 'megerkezett':
+            om.update_status(shipment.order_id, 'raktarba_erkezett')
+        flash(f'✅ Szállítmány állapota frissítve: {status}', 'success')
+    else:
+        flash('❌ Hiba történt!', 'danger')
+
+    return redirect(url_for('shipment_detail', shipment_id=shipment_id))
+
+
+@app.route('/shipment/<int:shipment_id>/assign_carrier', methods=['POST'])
+@login_required
+@role_required('raktaros', 'admin')
+def assign_carrier(shipment_id):
+    carrier_id = request.form.get('carrier_id', type=int)
+    if sm.assign_carrier(shipment_id, carrier_id):
+        flash('✅ Fuvarozó hozzárendelve!', 'success')
+    else:
+        flash('❌ Hiba történt!', 'danger')
+    return redirect(url_for('shipment_detail', shipment_id=shipment_id))
+
+
+# ============ RAKTÁR ============
+
+@app.route('/warehouses')
+@login_required
+@role_required('raktaros', 'admin')
+def warehouse_list():
+    page = request.args.get('page', 1, type=int)
+    pagination = wm.list_warehouses(page=page)
+    return render_template('warehouse/list.html', pagination=pagination)
+
+
+
+
+@app.route('/warehouse/<int:warehouse_id>/add_stock', methods=['POST'])
+@login_required
+@raktaros_required
+def warehouse_add_stock(warehouse_id):
+    product_id = request.form.get('product_id', type=int)
+    quantity = request.form.get('quantity', type=int)
+    location_code = request.form.get('location_code', '')
+
+    location = wm.add_stock(warehouse_id, product_id, quantity, location_code)
+    if location:
+        flash(f'✅ Készlet frissítve! (+{quantity} db)', 'success')
+    else:
+        flash('❌ Hiba történt!', 'danger')
+
+    return redirect(url_for('warehouse_detail', warehouse_id=warehouse_id))
+
+
+@app.route('/warehouse/<int:warehouse_id>/remove_stock', methods=['POST'])
+@login_required
+@raktaros_required
+def warehouse_remove_stock(warehouse_id):
+    product_id = request.form.get('product_id', type=int)
+    quantity = request.form.get('quantity', type=int)
+
+    success, message = wm.remove_stock(warehouse_id, product_id, quantity)
+    if success:
+        flash(f'✅ {message}', 'success')
+    else:
+        flash(f'❌ {message}', 'danger')
+
+    return redirect(url_for('warehouse_detail', warehouse_id=warehouse_id))
