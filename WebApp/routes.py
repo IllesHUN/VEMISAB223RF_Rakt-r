@@ -130,3 +130,270 @@ def profile():
             flash('❌ Hiba történt!', 'danger')
 
     return render_template('profile.html', user=user)
+
+# ============ MEGRENDELÉSEK ============
+
+@app.route('/orders')
+@login_required
+def order_list():
+    page = request.args.get('page', 1, type=int)
+    status = request.args.get('status', '', type=str)
+    role = session.get('role')
+    user_id = session.get('user_id')
+
+    if role == 'megrendelo':
+        pagination = om.list_orders(
+            page=page, buyer_id=user_id,
+            status=status if status else None)
+    elif role == 'beszallito':
+        pagination = om.list_orders(
+            page=page, supplier_id=user_id,
+            status=status if status else None)
+    else:
+        pagination = om.list_orders(
+            page=page, status=status if status else None)
+
+    return render_template('order/list.html', pagination=pagination)
+
+
+@app.route('/order/<int:order_id>')
+@login_required
+def order_detail(order_id):
+    order = om.get_order(order_id)
+    if not order:
+        flash('Rendelés nem található!', 'danger')
+        return redirect(url_for('order_list'))
+
+    # ✅ Jogosultság ellenőrzés
+    if session.get('role') == 'megrendelo':
+        if order.buyer_id != session['user_id']:
+            flash('⛔ Nincs jogosultságod ehhez a rendeléshez!', 'danger')
+            return redirect(url_for('order_list'))
+    elif session.get('role') == 'beszallito':
+        if order.supplier_id != session['user_id']:
+            flash('⛔ Nincs jogosultságod ehhez a rendeléshez!', 'danger')
+            return redirect(url_for('order_list'))
+
+    is_editable = om.is_editable(order)
+    shipments = sm.list_shipments(order_id=order_id, page=1, per_page=100).items
+    complaints = cm.list_complaints(order_id=order_id, page=1, per_page=100).items
+
+    return render_template('order/detail.html',
+                           order=order,
+                           is_editable=is_editable,
+                           shipments=shipments,
+                           complaints=complaints)
+
+
+
+@app.route('/order/new', methods=['GET', 'POST'])
+@login_required
+@role_required('megrendelo', 'admin')
+def order_new():
+    # Termékek listává alakítása (JavaScript tojson miatt)
+    products_list = [
+        {
+            'id': p.id,
+            'name': p.name,
+            'sku': p.sku,
+            'price': p.price,
+            'unit': p.unit
+        }
+        for p in pm.list_products(page=1, per_page=1000).items
+    ]
+
+    if request.method == 'POST':
+        product_ids = request.form.getlist('product_id[]')
+        quantities = request.form.getlist('quantity[]')
+        note = request.form.get('note', '')
+
+        items = []
+        for pid, qty in zip(product_ids, quantities):
+            if pid and qty:
+                product = pm.get_product(int(pid))
+                items.append({
+                    'product_id': int(pid),
+                    'quantity': int(qty),
+                    'unit_price': product.price if product else 0.0
+                })
+
+        if not items:
+            flash('Legalább egy terméket adj meg!', 'danger')
+            return render_template('order/new_edit.html',
+                                   products=products_list,
+                                   order=None,
+                                   is_editable=True)
+
+        order = om.create_order(session['user_id'], items, note)
+        if order:
+            flash(f'✅ Megrendelés sikeresen leadva! (#{order.id})', 'success')
+            return redirect(url_for('order_detail', order_id=order.id))
+        flash('❌ Hiba történt a megrendelés rögzítésekor!', 'danger')
+
+    return render_template('order/new_edit.html',
+                           products=products_list,
+                           order=None,
+                           is_editable=True)
+
+
+
+@app.route('/order/<int:order_id>/edit', methods=['GET', 'POST'])
+@login_required
+@role_required('megrendelo', 'admin')
+def order_edit(order_id):
+    order = om.get_order(order_id)
+    if not order:
+        flash('Rendelés nem található!', 'danger')
+        return redirect(url_for('order_list'))
+
+    if not om.is_editable(order):
+        flash('❌ A rendelés már nem szerkeszthető (24 óra eltelt)!', 'danger')
+        return redirect(url_for('order_detail', order_id=order_id))
+
+    # Termékek listává alakítása
+    products_list = [
+        {
+            'id': p.id,
+            'name': p.name,
+            'sku': p.sku,
+            'price': p.price,
+            'unit': p.unit
+        }
+        for p in pm.list_products(page=1, per_page=1000).items
+    ]
+
+    if request.method == 'POST':
+        product_ids = request.form.getlist('product_id[]')
+        quantities = request.form.getlist('quantity[]')
+        note = request.form.get('note', '')
+
+        items = []
+        for pid, qty in zip(product_ids, quantities):
+            if pid and qty:
+                product = pm.get_product(int(pid))
+                items.append({
+                    'product_id': int(pid),
+                    'quantity': int(qty),
+                    'unit_price': product.price if product else 0.0
+                })
+
+        updated, message = om.update_order(order_id, items, note)
+        if updated:
+            flash(f'✅ {message}', 'success')
+            return redirect(url_for('order_detail', order_id=order_id))
+        flash(f'❌ {message}', 'danger')
+
+    return render_template('order/new_edit.html',
+                           products=products_list,
+                           order=order,
+                           is_editable=True)
+
+
+
+@app.route('/order/<int:order_id>/status', methods=['POST'])
+@login_required
+@role_required('raktaros', 'admin')
+def order_status_update(order_id):
+    status = request.form.get('status')
+    if om.update_status(order_id, status):
+        flash(f'✅ Rendelés állapota frissítve: {status}', 'success')
+    else:
+        flash('❌ Hiba történt!', 'danger')
+    return redirect(url_for('order_detail', order_id=order_id))
+
+
+# ============ SZÁLLÍTMÁNYOK ============
+
+@app.route('/shipments')
+@login_required
+def shipment_list():
+    page = request.args.get('page', 1, type=int)
+    status = request.args.get('status', '', type=str)
+    role = session.get('role')
+    user_id = session.get('user_id')
+
+    if role == 'fuvarozo':
+        pagination = sm.list_shipments(
+            page=page, carrier_id=user_id,
+            status=status if status else None)
+    else:
+        pagination = sm.list_shipments(
+            page=page, status=status if status else None)
+
+    return render_template('shipment/list.html', pagination=pagination)
+
+
+@app.route('/shipment/<int:shipment_id>')
+@login_required
+def shipment_detail(shipment_id):
+    shipment = sm.get_shipment(shipment_id)
+    if not shipment:
+        flash('Szállítmány nem található!', 'danger')
+        return redirect(url_for('shipment_list'))
+
+    status_form = ShipmentStatusForm()
+
+    # Fuvarozók listája (raktáros/admin számára)
+    carriers = um.list_users(role='fuvarozo', page=1, per_page=100).items
+
+    return render_template('shipment/detail.html',
+                           shipment=shipment,
+                           status_form=status_form,
+                           carriers=carriers)
+
+
+@app.route('/products')
+def product_list():
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
+    
+    products = pm.list_products(page=1, per_page=1000).items
+    return render_template('products/list.html', products=products)
+
+@app.route('/products/new', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def product_new():
+    if request.method == 'POST':
+        name        = request.form.get('name')
+        sku         = request.form.get('sku')
+        description = request.form.get('description', '')
+        unit        = request.form.get('unit', 'db')
+        price       = request.form.get('price', 0.0, type=float)
+
+        try:
+            product = pm.add_product(name, sku, description, unit, price)
+            flash(f'✅ Termék sikeresen hozzáadva: {product.name}', 'success')
+            return redirect(url_for('product_list'))
+        except Exception as e:
+            flash(f'❌ Hiba: {str(e)}', 'danger')
+
+    return render_template('products/new_edit.html', product=None)
+
+
+@app.route('/products/<int:product_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def product_edit(product_id):
+    product = pm.get_product(product_id)
+    if not product:
+        flash('Termék nem található!', 'danger')
+        return redirect(url_for('product_list'))
+
+    if request.method == 'POST':
+        name        = request.form.get('name')
+        sku         = request.form.get('sku')
+        description = request.form.get('description', '')
+        unit        = request.form.get('unit', 'db')
+        price       = request.form.get('price', 0.0, type=float)
+
+        try:
+            pm.update_product(product_id, name, sku, description, unit, price)
+            flash('✅ Termék sikeresen frissítve!', 'success')
+            return redirect(url_for('product_list'))
+        except Exception as e:
+            flash(f'❌ Hiba: {str(e)}', 'danger')
+
+    return render_template('products/new_edit.html', product=product)
+
+
