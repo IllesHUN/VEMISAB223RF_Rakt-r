@@ -321,32 +321,32 @@
 <body>
 
 <nav>
-    <a href="{{ url_for('index') }}" class="logo">🏭 RaktárManager</a>
+    <a href="{{ url_for('index') }}" class="logo">RaktárManager</a>
 
     <div class="nav-links">
         {% if session.get('user_id') %}
-            <a href="{{ url_for('index') }}">🏠 Főoldal</a>
-            <a href="{{ url_for('order_list') }}">📦 Rendelések</a>
+            <a href="{{ url_for('index') }}">Főoldal</a>
+            <a href="{{ url_for('order_list') }}">Rendelések</a>
 
             {% if session.get('role') in ['fuvarozo', 'raktaros', 'admin'] %}
-                <a href="{{ url_for('shipment_list') }}">🚚 Szállítmányok</a>
+                <a href="{{ url_for('shipment_list') }}">Szállítmányok</a>
             {% endif %}
 
             {% if session.get('role') in ['raktaros', 'admin'] %}
-                <a href="{{ url_for('warehouse_list') }}">🏪 Raktárak</a>
+                <a href="{{ url_for('warehouse_list') }}">Raktárak</a>
             {% endif %}
 
             {% if session.get('role') in ['megrendelo', 'admin','raktaros'] %}
-                <a href="{{ url_for('complaint_list') }}">⚠️ Reklamációk</a>
+                <a href="{{ url_for('complaint_list') }}">Reklamációk</a>
             {% endif %}
 
             {% if session.get('role') == 'admin' %}
-                <a href="{{ url_for('admin_stats') }}">📊 Statisztikák</a>
+                <a href="{{ url_for('admin_stats') }}">Statisztikák</a>
             {% endif %}
-            <a href="{{ url_for('product_list') }}">🛒 Termékek</a>
+            <a href="{{ url_for('product_list') }}">Termékek</a>
 
 
-            <a href="{{ url_for('profile') }}">👤 Profil</a>
+            <a href="{{ url_for('profile') }}">Profil</a>
 
             <span class="role-badge">{{ session.get('role') }}</span>
             <a href="{{ url_for('logout') }}">Kijelentkezés</a>
