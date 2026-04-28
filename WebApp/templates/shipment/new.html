@@ -3,13 +3,13 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>🚚 Szállítás rögzítése</h1>
+    <h1>Szállítás rögzítése</h1>
     <a href="{{ url_for('order_detail', order_id=order.id) }}" class="btn btn-secondary">← Vissza</a>
 </div>
 
 <div style="max-width: 600px;">
     <div class="card">
-        <h3 style="margin-bottom: 5px;">📦 Rendelés: #{{ order.id }}</h3>
+        <h3 style="margin-bottom: 5px;">Rendelés: #{{ order.id }}</h3>
         <p style="color: #adb5bd; margin-bottom: 25px;">
             Megrendelő: {{ order.buyer.name if order.buyer else '-' }} |
             Tételek: {{ order.items|length }} db

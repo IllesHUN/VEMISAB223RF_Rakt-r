@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>🚚 Szállítmányok</h1>
+    <h1>Szállítmányok</h1>
 </div>
 
 <!-- Szűrő -->
@@ -13,10 +13,10 @@
             <label>Státusz szűrő</label>
             <select name="status">
                 <option value="">Összes státusz</option>
-                <option value="elokeszitve" {% if request.args.get('status') == 'elokeszitve' %}selected{% endif %}>⏳ Előkészítve</option>
-                <option value="uton" {% if request.args.get('status') == 'uton' %}selected{% endif %}>🚚 Úton</option>
-                <option value="megerkezett" {% if request.args.get('status') == 'megerkezett' %}selected{% endif %}>✅ Megérkezett</option>
-                <option value="sikertelen" {% if request.args.get('status') == 'sikertelen' %}selected{% endif %}>❌ Sikertelen</option>
+                <option value="elokeszitve" {% if request.args.get('status') == 'elokeszitve' %}selected{% endif %}>Előkészítve</option>
+                <option value="uton" {% if request.args.get('status') == 'uton' %}selected{% endif %}>Úton</option>
+                <option value="megerkezett" {% if request.args.get('status') == 'megerkezett' %}selected{% endif %}>Megérkezett</option>
+                <option value="sikertelen" {% if request.args.get('status') == 'sikertelen' %}selected{% endif %}>Sikertelen</option>
             </select>
         </div>
         <button type="submit" class="btn btn-primary" style="height: 42px;">Szűrés</button>
@@ -47,10 +47,10 @@
             </td>
             <td>
                 <span class="badge badge-{{ shipment.status }}">
-                    {% if shipment.status == 'elokeszitve' %}⏳ Előkészítve
-                    {% elif shipment.status == 'uton' %}🚚 Úton
-                    {% elif shipment.status == 'megerkezett' %}✅ Megérkezett
-                    {% elif shipment.status == 'sikertelen' %}❌ Sikertelen
+                    {% if shipment.status == 'elokeszitve' %}Előkészítve
+                    {% elif shipment.status == 'uton' %}Úton
+                    {% elif shipment.status == 'megerkezett' %}Megérkezett
+                    {% elif shipment.status == 'sikertelen' %}Sikertelen
                     {% else %}{{ shipment.status }}
                     {% endif %}
                 </span>
@@ -91,7 +91,7 @@
 
 {% else %}
 <div class="card" style="text-align: center; padding: 40px;">
-    <p style="color: #adb5bd; font-size: 18px;">📭 Nincs megjeleníthető szállítmány.</p>
+    <p style="color: #adb5bd; font-size: 18px;">Nincs megjeleníthető szállítmány.</p>
 </div>
 {% endif %}
 
