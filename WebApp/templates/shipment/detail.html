@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}- Szállítmány #{{ shipment.id }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🚚 Szállítmány #{{ shipment.id }}</h1>
+    <a href="{{ url_for('shipment_list') }}" class="btn btn-secondary">← Vissza</a>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+
+    <!-- Alapadatok -->
+    <div class="card">
+        <h3>📋 Alapadatok</h3>
+        <table style="background: transparent;">
+            <tbody>
+                <tr>
+                    <td style="color: #adb5bd; width: 150px;">Azonosító:</td>
+                    <td><strong>#{{ shipment.id }}</strong></td>
+                </tr>
+                <tr>
+                    <td style="color: #adb5bd;">Rendelés:</td>
+                    <td>
+                        <a href="{{ url_for('order_detail', order_id=shipment.order_id) }}"
+                           style="color: #e94560;">#{{ shipment.order_id }}</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="color: #adb5bd;">Státusz:</td>
+                    <td>
+                        <span class="badge badge-{{ shipment.status }}">
+                            {% if shipment.status == 'elokeszitve' %}⏳ Előkészítve
+                            {% elif shipment.status == 'uton' %}🚚 Úton
+                            {% elif shipment.status == 'megerkezett' %}✅ Megérkezett
+                            {% elif shipment.status == 'sikertelen' %}❌ Sikertelen
+                            {% else %}{{ shipment.status }}
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="color: #adb5bd;">Fuvarozó:</td>
+                    <td>{{ shipment.carrier.name if shipment.carrier else 'Nincs hozzárendelve' }}</td>
+                </tr>
+                <tr>
+                    <td style="color: #adb5bd;">Várható érkezés:</td>
+                    <td>{{ shipment.expected_at.strftime('%Y-%m-%d %H:%M') if shipment.expected_at else '-' }}</td>
+                </tr>
+                <tr>
+                    <td style="color: #adb5bd;">Megérkezett:</td>
+                    <td>{{ shipment.delivered_at.strftime('%Y-%m-%d %H:%M') if shipment.delivered_at else '-' }}</td>
+                </tr>
+                <tr>
+                    <td style="color: #adb5bd;">Létrehozva:</td>
+                    <td>{{ shipment.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                </tr>
+                {% if shipment.note %}
+                <tr>
+                    <td style="color: #adb5bd;">Megjegyzés:</td>
+                    <td>{{ shipment.note }}</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Műveletek -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+
+        <!-- Fuvarozó állapot frissítés -->
+        {% if session.get('role') in ['fuvarozo', 'admin'] %}
+        <div class="card">
+            <h3>🔄 Fuvar állapotának módosítása</h3>
+            <form method="POST" action="{{ url_for('shipment_status_update', shipment_id=shipment.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                    {{ status_form.status.label }}
+                    {{ status_form.status(class="form-control") }}
+                </div>
+                <button type="submit" class="btn btn-warning" style="width: 100%;">
+                    💾 Állapot mentése
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- Fuvarozó hozzárendelés (raktáros/admin) -->
+        {% if session.get('role') in ['raktaros', 'admin'] %}
+        <div class="card">
+            <h3>👤 Fuvarozó hozzárendelése</h3>
+            <form method="POST" action="{{ url_for('assign_carrier', shipment_id=shipment.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                    <label>Fuvarozó kiválasztása</label>
+                    <select name="carrier_id">
+                        <option value="">-- Válassz fuvarozót --</option>
+                        {% for carrier in carriers %}
+                        <option value="{{ carrier.id }}"
+                            {% if shipment.carrier_id == carrier.id %}selected{% endif %}>
+                            {{ carrier.name }} ({{ carrier.email }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%;">
+                    ✅ Fuvarozó hozzárendelése
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}- Szállítmányok{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🚚 Szállítmányok</h1>
+</div>
+
+<!-- Szűrő -->
+<div class="card" style="padding: 15px 25px;">
+    <form method="GET" action="{{ url_for('shipment_list') }}" style="display: flex; gap: 15px; align-items: flex-end;">
+        <div class="form-group" style="margin: 0; flex: 1;">
+            <label>Státusz szűrő</label>
+            <select name="status">
+                <option value="">Összes státusz</option>
+                <option value="elokeszitve" {% if request.args.get('status') == 'elokeszitve' %}selected{% endif %}>⏳ Előkészítve</option>
+                <option value="uton" {% if request.args.get('status') == 'uton' %}selected{% endif %}>🚚 Úton</option>
+                <option value="megerkezett" {% if request.args.get('status') == 'megerkezett' %}selected{% endif %}>✅ Megérkezett</option>
+                <option value="sikertelen" {% if request.args.get('status') == 'sikertelen' %}selected{% endif %}>❌ Sikertelen</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="height: 42px;">Szűrés</button>
+        <a href="{{ url_for('shipment_list') }}" class="btn btn-secondary" style="height: 42px; line-height: 22px;">Törlés</a>
+    </form>
+</div>
+
+{% if pagination.items %}
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Rendelés</th>
+            <th>Státusz</th>
+            <th>Fuvarozó</th>
+            <th>Várható érkezés</th>
+            <th>Megérkezett</th>
+            <th>Műveletek</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for shipment in pagination.items %}
+        <tr>
+            <td><strong>#{{ shipment.id }}</strong></td>
+            <td>
+                <a href="{{ url_for('order_detail', order_id=shipment.order_id) }}"
+                   style="color: #e94560;">#{{ shipment.order_id }}</a>
+            </td>
+            <td>
+                <span class="badge badge-{{ shipment.status }}">
+                    {% if shipment.status == 'elokeszitve' %}⏳ Előkészítve
+                    {% elif shipment.status == 'uton' %}🚚 Úton
+                    {% elif shipment.status == 'megerkezett' %}✅ Megérkezett
+                    {% elif shipment.status == 'sikertelen' %}❌ Sikertelen
+                    {% else %}{{ shipment.status }}
+                    {% endif %}
+                </span>
+            </td>
+            <td>{{ shipment.carrier.name if shipment.carrier else '<em style="color:#adb5bd;">Nincs</em>' | safe }}</td>
+            <td>{{ shipment.expected_at.strftime('%Y-%m-%d %H:%M') if shipment.expected_at else '-' }}</td>
+            <td>{{ shipment.delivered_at.strftime('%Y-%m-%d %H:%M') if shipment.delivered_at else '-' }}</td>
+            <td>
+                <a href="{{ url_for('shipment_detail', shipment_id=shipment.id) }}" class="btn btn-info btn-sm">Részletek</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Paginálás -->
+<ul class="pagination">
+    {% if pagination.has_prev %}
+    <li><a href="{{ url_for('shipment_list', page=pagination.prev_num, status=request.args.get('status', '')) }}">« Előző</a></li>
+    {% endif %}
+
+    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if page_num %}
+            {% if page_num == pagination.page %}
+            <li><strong>{{ page_num }}</strong></li>
+            {% else %}
+            <li><a href="{{ url_for('shipment_list', page=page_num, status=request.args.get('status', '')) }}">{{ page_num }}</a></li>
+            {% endif %}
+        {% else %}
+            <li>...</li>
+        {% endif %}
+    {% endfor %}
+
+    {% if pagination.has_next %}
+    <li><a href="{{ url_for('shipment_list', page=pagination.next_num, status=request.args.get('status', '')) }}">Következő »</a></li>
+    {% endif %}
+</ul>
+
+{% else %}
+<div class="card" style="text-align: center; padding: 40px;">
+    <p style="color: #adb5bd; font-size: 18px;">📭 Nincs megjeleníthető szállítmány.</p>
+</div>
+{% endif %}
+
+{% endblock %}
