@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}- Termékek{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📋 Elérhető termékek</h1>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Név</th>
+                <th>SKU</th>
+                <th>Leírás</th>
+                <th>Egység</th>
+                <th>Ár</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in products %}
+            <tr>
+                <td><strong>{{ p.name }}</strong></td>
+                <td><code>{{ p.sku }}</code></td>
+                <td>{{ p.description or '—' }}</td>
+                <td>{{ p.unit }}</td>
+                <td>{{ "{:,.0f}".format(p.price) }} Ft</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align:center; color:#aaa;">
+                    Nincs elérhető termék.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
