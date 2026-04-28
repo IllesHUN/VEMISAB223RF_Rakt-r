@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}- Statisztikák{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Statisztikák</h1>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+
+    <div class="card">
+        <h3>Havi rendelések (2026)</h3>
+        <canvas id="monthlyOrdersChart"></canvas>
+    </div>
+
+    <div class="card">
+        <h3>Havi bevétel (2026)</h3>
+        <canvas id="monthlyRevenueChart"></canvas>
+    </div>
+
+    <div class="card">
+        <h3>Top 5 megrendelő</h3>
+        <canvas id="topBuyersChart"></canvas>
+    </div>
+
+    <div class="card">
+        <h3>Rendelések státusz szerint</h3>
+        <canvas id="statusChart"></canvas>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const monthlyLabels = ['Jan','Feb','Már','Ápr','Máj','Jún','Júl','Aug','Sze','Okt','Nov','Dec'];
+    const monthlyOrdersData = new Array(12).fill(0);
+    {% for row in monthly_orders %}
+        monthlyOrdersData[{{ row.month|int - 1 }}] = {{ row.count }};
+    {% endfor %}
+
+    const monthlyRevenueData = new Array(12).fill(0);
+    {% for row in monthly_revenue %}
+        monthlyRevenueData[{{ row.month|int - 1 }}] = {{ row.revenue|float|round(0) }};
+    {% endfor %}
+
+    const topBuyerLabels = [{% for b in top_buyers %}"{{ b.name }}"{% if not loop.last %},{% endif %}{% endfor %}];
+    const topBuyerData = [{% for b in top_buyers %}{{ b.count }}{% if not loop.last %},{% endif %}{% endfor %}];
+
+    const statusLabels = [{% for s in status_counts %}"{{ s.status }}"{% if not loop.last %},{% endif %}{% endfor %}];
+    const statusData = [{% for s in status_counts %}{{ s.count }}{% if not loop.last %},{% endif %}{% endfor %}];
+
+    new Chart(document.getElementById('monthlyOrdersChart'), {
+        type: 'line',
+        data: {
+            labels: monthlyLabels,
+            datasets: [{
+                label: 'Rendelések száma',
+                data: monthlyOrdersData,
+                borderColor: '#e94560',
+                backgroundColor: 'rgba(233,69,96,0.2)',
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    new Chart(document.getElementById('monthlyRevenueChart'), {
+        type: 'bar',
+        data: {
+            labels: monthlyLabels,
+            datasets: [{
+                label: 'Bevétel (Ft)',
+                data: monthlyRevenueData,
+                backgroundColor: 'rgba(72,199,142,0.7)',
+                borderColor: '#48c78e',
+                borderWidth: 1
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    new Chart(document.getElementById('topBuyersChart'), {
+        type: 'bar',
+        data: {
+            labels: topBuyerLabels,
+            datasets: [{
+                label: 'Rendelések',
+                data: topBuyerData,
+                backgroundColor: 'rgba(52,152,219,0.7)',
+                borderColor: '#3498db',
+                borderWidth: 1
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } },
+                   indexAxis: 'y' }
+    });
+
+    new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: statusLabels,
+            datasets: [{
+                data: statusData,
+                backgroundColor: ['#e94560','#f39c12','#48c78e','#3498db','#9b59b6']
+            }]
+        },
+        options: { responsive: true }
+    });
+</script>
+{% endblock %}

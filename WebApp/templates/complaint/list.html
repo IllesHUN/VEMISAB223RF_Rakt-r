@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}- Reklamációk{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Reklamációk</h1>
+</div>
+
+{% if pagination.items %}
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Rendelés</th>
+            {% if session.get('role') == 'admin' %}
+            <th>Beküldő</th>
+            {% endif %}
+            <th>Típus</th>
+            <th>Leírás</th>
+            <th>Státusz</th>
+            <th>Dátum</th>
+            <th>Műveletek</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for complaint in pagination.items %}
+        <tr>
+            <td><strong>#{{ complaint.id }}</strong></td>
+            <td>
+                <a href="{{ url_for('order_detail', order_id=complaint.order_id) }}"
+                   style="color: #e94560;">#{{ complaint.order_id }}</a>
+            </td>
+            {% if session.get('role') == 'admin' %}
+            <td>{{ complaint.user.name if complaint.user else '-' }}</td>
+            {% endif %}
+            <td>
+                {% if complaint.type == 'hianyos' %}
+                    <span style="color: #ffd43b;">Hiányos</span>
+                {% elif complaint.type == 'serult' %}
+                    <span style="color: #ff6b6b;">Sérült</span>
+                {% else %}
+                    <span style="color: #adb5bd;">Egyéb</span>
+                {% endif %}
+            </td>
+            <td>{{ complaint.description[:60] }}{% if complaint.description|length > 60 %}...{% endif %}</td>
+            <td><span class="badge badge-{{ complaint.status }}">{{ complaint.status }}</span></td>
+            <td>{{ complaint.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>
+                <!-- Részletek gomb - mindenki látja -->
+                <a href="{{ url_for('complaint_detail', complaint_id=complaint.id) }}"
+                   class="btn btn-primary btn-sm">Részletek</a>
+
+                <!-- Státusz módosítás - csak admin -->
+                {% if session.get('role') == 'admin' %}
+                <form method="POST" action="{{ url_for('complaint_status_update', complaint_id=complaint.id) }}"
+                      style="display: inline-flex; gap: 8px; align-items: center; margin-top: 5px;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <select name="status" style="padding: 5px; background: #0f3460;
+                            border: 1px solid #1a4a7a; color: #e0e0e0; border-radius: 4px;">
+                        <option value="nyitott" {% if complaint.status == 'nyitott' %}selected{% endif %}>Nyitott</option>
+                        <option value="folyamatban" {% if complaint.status == 'folyamatban' %}selected{% endif %}>Folyamatban</option>
+                        <option value="lezarva" {% if complaint.status == 'lezarva' %}selected{% endif %}>Lezárva</option>
+                    </select>
+                    <button type="submit" class="btn btn-warning btn-sm">Mentés</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Paginálás -->
+<ul class="pagination">
+    {% if pagination.has_prev %}
+    <li><a href="{{ url_for('complaint_list', page=pagination.prev_num) }}">« Előző</a></li>
+    {% endif %}
+
+    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if page_num %}
+            {% if page_num == pagination.page %}
+            <li><strong>{{ page_num }}</strong></li>
+            {% else %}
+            <li><a href="{{ url_for('complaint_list', page=page_num) }}">{{ page_num }}</a></li>
+            {% endif %}
+        {% else %}
+            <li>...</li>
+        {% endif %}
+    {% endfor %}
+
+    {% if pagination.has_next %}
+    <li><a href="{{ url_for('complaint_list', page=pagination.next_num) }}">Következő »</a></li>
+    {% endif %}
+</ul>
+
+{% else %}
+<div class="card" style="text-align: center; padding: 40px;">
+    <p style="color: #adb5bd; font-size: 18px;">Nincs aktív reklamáció.</p>
+</div>
+{% endif %}
+
+{% endblock %}

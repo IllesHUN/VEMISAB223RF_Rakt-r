@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}- Új reklamáció{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Reklamáció beküldése</h1>
+    <a href="{{ url_for('order_detail', order_id=order.id) }}" class="btn btn-secondary">← Vissza</a>
+</div>
+
+<div style="max-width: 600px;">
+    <div class="card">
+        <h3 style="margin-bottom: 5px;">Rendelés: #{{ order.id }}</h3>
+        <p style="color: #adb5bd; margin-bottom: 25px;">
+            Dátum: {{ order.created_at.strftime('%Y-%m-%d %H:%M') }} |
+            Tételek: {{ order.items|length }} db
+        </p>
+
+        <form method="POST">
+            {{ form.hidden_tag() }}
+
+            <div class="form-group">
+                {{ form.type.label }}
+                {{ form.type() }}
+                {% if form.type.errors %}
+                    <div class="form-error">{{ form.type.errors[0] }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                {{ form.description.label }}
+                {{ form.description(placeholder="Írja le részletesen a problémát...") }}
+                {% if form.description.errors %}
+                    <div class="form-error">{{ form.description.errors[0] }}</div>
+                {% endif %}
+            </div>
+
+            <div style="display: flex; gap: 15px; margin-top: 10px;">
+                {{ form.submit(class="btn btn-danger", style="padding: 12px 30px; font-size: 16px;") }}
+                <a href="{{ url_for('order_detail', order_id=order.id) }}"
+                   class="btn btn-secondary" style="padding: 12px 30px;">Mégse</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

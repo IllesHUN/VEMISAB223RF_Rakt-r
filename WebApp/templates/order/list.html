@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block title %}- Rendelések{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Rendelések</h1>
+    {% if session.get('role') in ['megrendelo', 'admin'] %}
+        <a href="{{ url_for('order_new') }}" class="btn btn-primary">+ Új rendelés</a>
+    {% endif %}
+</div>
+
+<!-- Szűrő -->
+<div class="card" style="padding: 15px 25px;">
+    <form method="GET" action="{{ url_for('order_list') }}" style="display: flex; gap: 15px; align-items: flex-end;">
+        <div class="form-group" style="margin: 0; flex: 1;">
+            <label>Státusz szűrő</label>
+            <select name="status">
+                <option value="">Összes státusz</option>
+                <option value="feldolgozas_alatt" {% if request.args.get('status') == 'feldolgozas_alatt' %}selected{% endif %}>Feldolgozás alatt</option>
+                <option value="szallitas_alatt" {% if request.args.get('status') == 'szallitas_alatt' %}selected{% endif %}>Szállítás alatt</option>
+                <option value="raktarba_erkezett" {% if request.args.get('status') == 'raktarba_erkezett' %}selected{% endif %}>Raktárba érkezett</option>
+                <option value="lezarva" {% if request.args.get('status') == 'lezarva' %}selected{% endif %}>Lezárva</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="height: 42px;">Szűrés</button>
+        <a href="{{ url_for('order_list') }}" class="btn btn-secondary" style="height: 42px; line-height: 22px;">Törlés</a>
+    </form>
+</div>
+
+<!-- Táblázat -->
+{% if pagination.items %}
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Státusz</th>
+            {% if session.get('role') in ['raktaros', 'admin'] %}
+            <th>Megrendelő</th>
+            <th>Beszállító</th>
+            {% endif %}
+            <th>Tételek száma</th>
+            <th>Megjegyzés</th>
+            <th>Dátum</th>
+            <th>Műveletek</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for order in pagination.items %}
+        <tr>
+            <td><strong>#{{ order.id }}</strong></td>
+            <td>
+                <span class="badge badge-{{ order.status }}">
+                    {% if order.status == 'feldolgozas_alatt' %}Feldolgozás alatt
+                    {% elif order.status == 'szallitas_alatt' %}Szállítás alatt
+                    {% elif order.status == 'raktarba_erkezett' %}Raktárba érkezett
+                    {% elif order.status == 'lezarva' %}Lezárva
+                    {% else %}{{ order.status }}
+                    {% endif %}
+                </span>
+            </td>
+            {% if session.get('role') in ['raktaros', 'admin'] %}
+            <td>{{ order.buyer.name if order.buyer else '-' }}</td>
+            <td>{{ order.supplier.name if order.supplier else '<em style="color:#adb5bd;">Nincs</em>' | safe }}</td>
+            {% endif %}
+            <td style="text-align: center;">{{ order.items|length }} db</td>
+            <td>{{ order.note[:40] if order.note else '-' }}{% if order.note and order.note|length > 40 %}...{% endif %}</td>
+            <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>
+                <a href="{{ url_for('order_detail', order_id=order.id) }}" class="btn btn-info btn-sm">Részletek</a>
+                {% if session.get('role') in ['megrendelo', 'admin'] %}
+                    {% if order.status == 'feldolgozas_alatt' %}
+                        <a href="{{ url_for('order_edit', order_id=order.id) }}" class="btn btn-warning btn-sm">Szerkesztés</a>
+                    {% endif %}
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Paginálás -->
+<ul class="pagination">
+    {% if pagination.has_prev %}
+    <li><a href="{{ url_for('order_list', page=pagination.prev_num, status=request.args.get('status', '')) }}">« Előző</a></li>
+    {% endif %}
+
+    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if page_num %}
+            {% if page_num == pagination.page %}
+            <li><strong>{{ page_num }}</strong></li>
+            {% else %}
+            <li><a href="{{ url_for('order_list', page=page_num, status=request.args.get('status', '')) }}">{{ page_num }}</a></li>
+            {% endif %}
+        {% else %}
+            <li>...</li>
+        {% endif %}
+    {% endfor %}
+
+    {% if pagination.has_next %}
+    <li><a href="{{ url_for('order_list', page=pagination.next_num, status=request.args.get('status', '')) }}">Következő »</a></li>
+    {% endif %}
+</ul>
+
+{% else %}
+<div class="card" style="text-align: center; padding: 40px;">
+    <p style="color: #adb5bd; font-size: 18px;">Nincs megjeleníthető rendelés.</p>
+    {% if session.get('role') in ['megrendelo', 'admin'] %}
+    <a href="{{ url_for('order_new') }}" class="btn btn-primary" style="margin-top: 15px;">+ Első rendelés leadása</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
