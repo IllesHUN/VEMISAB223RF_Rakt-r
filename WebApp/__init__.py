@@ -27,3 +27,4 @@ from WebApp.models.shipment import Shipment
 from WebApp.models.warehouse import Warehouse
 from WebApp.models.storagelocation import StorageLocation
 from WebApp.models.complaint import Complaint
+from WebApp import routes
