@@ -603,7 +603,6 @@ def warehouse_detail(warehouse_id):
 @raktaros_required
 def warehouse_add_stock(warehouse_id):
     if request.form.get('bulk_receive'):
-        # Bulk beérkeztetés
         product_ids = request.form.getlist('product_ids', type=int)
         quantities = request.form.getlist('quantities', type=int)
         location_codes = request.form.getlist('location_codes')
@@ -621,16 +620,20 @@ def warehouse_add_stock(warehouse_id):
 
         if not errors:
             for oid in done_orders:
-                om.update_status(oid, 'lezarva')
-            flash(f' {len(product_ids)} tétel sikeresen beérkeztetve!', 'success')
+                
+                
+                order = om.get_order(oid)
+                if order:
+                    order.status = 'lezarva'
+                    db.session.commit()
+            flash(f'✅ {len(product_ids)} tétel sikeresen beérkeztetve!', 'success')
     else:
-        
         product_id = request.form.get('productid', type=int)
         quantity = request.form.get('quantity', type=int)
         location_code = request.form.get('locationcode', '').strip()
         try:
             wm.add_stock(warehouse_id, product_id, quantity, location_code)
-            flash(f'Készlet frissítve! {quantity} db', 'success')
+            flash(f'✅ Készlet frissítve! {quantity} db', 'success')
         except ValueError as e:
             flash(f'{str(e)}', 'danger')
         except Exception:
@@ -903,20 +906,30 @@ def api_orders():
 @role_required('admin')
 def admin_clear_data():
     try:
-        db.session.query(OrderItem).delete()
-        db.session.query(Order).delete()
-        db.session.query(Complaint).delete()
+        from WebApp.models.storagelocation import StorageLocation
+        from WebApp.models.orderitem import OrderItem
+
         db.session.query(StorageLocation).delete()
         db.session.query(Shipment).delete()
+        db.session.query(Complaint).delete()
+        db.session.query(OrderItem).delete()
+        db.session.query(Order).delete()
         db.session.query(Warehouse).delete()
         db.session.query(Product).delete()
         db.session.commit()
+
+        
+        tables = ['shipment', 'complaint', 'order_item', 'order', 
+                  'storage_location', 'warehouse', 'product']
+        for table in tables:
+            db.session.execute(db.text(f'ALTER TABLE `{table}` AUTO_INCREMENT = 1'))
+        db.session.commit()
+
         flash('✅ Összes adat sikeresen törölve!', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'❌ Hiba történt: {e}', 'danger')
     return redirect(url_for('index'))
-
 
 
 @app.route('/stock-order/new', methods=['GET', 'POST'])
