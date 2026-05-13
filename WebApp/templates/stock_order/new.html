@@ -76,40 +76,41 @@
 <script>
     const productList = JSON.parse(document.getElementById('product-data').getAttribute('data-products'));
 
-    function getOptions() {
-        let opts = '<option value="">-- Válassz terméket --</option>';
-        productList.forEach(p => {
-            opts += `<option value="${p.id}">${p.name} (${p.sku}) - ${Math.round(p.price)} Ft/${p.unit}</option>`;
-        });
-        return opts;
-    }
+function getOptions() {
+    let opts = '<option value="">-- Válassz terméket --</option>';
+    productList.forEach(p => {
+        opts += `<option value="${p.id}">${p.name} ${p.sku} - ${Math.round(p.price)} Ft/${p.unit}</option>`;
+    });
+    return opts;
+}
 
-    function addItem() {
-        const container = document.getElementById('items-container');
-        const div = document.createElement('div');
-        div.className = 'order-item';
-        div.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr auto; gap: 15px; margin-bottom: 15px; align-items: end;';
-        div.innerHTML = `
-            <div class="form-group" style="margin: 0;">
-                <label class="form-label">Termék</label>
-                <select name="product_id[]" class="form-control" required>${getOptions()}</select>
-            </div>
-            <div class="form-group" style="margin: 0;">
-                <label class="form-label">Mennyiség</label>
-                <input type="number" name="quantity[]" class="form-control" value="1" min="1" required>
-            </div>
-            <button type="button" onclick="removeItem(this)" class="btn btn-danger btn-sm">✖</button>
-        `;
-        container.appendChild(div);
-    }
+function addItem() {
+    const container = document.getElementById('items-container');
+    const div = document.createElement('div');
+    div.className = 'order-item';
+    div.style.cssText = 'display:grid; grid-template-columns:2fr 1fr auto; gap:15px; margin-bottom:15px; align-items:end;';
+    div.innerHTML = `
+        <div class="form-group" style="margin:0">
+            <label class="form-label">Termék</label>
+            <select name="product_id" class="form-control" required>${getOptions()}</select>
+        </div>
+        <div class="form-group" style="margin:0">
+            <label class="form-label">Mennyiség</label>
+            <input type="number" name="quantity" class="form-control"
+                   value="1" min="1" required>
+        </div>
+        <button type="button" onclick="removeItem(this)" class="btn btn-danger btn-sm" style="margin-bottom:0">✕</button>
+    `;
+    container.appendChild(div);
+}
 
-    function removeItem(btn) {
-        const items = document.querySelectorAll('.order-item');
-        if (items.length > 1) {
-            btn.closest('.order-item').remove();
-        } else {
-            alert('Legalább egy tételt meg kell adni!');
-        }
+function removeItem(btn) {
+    const items = document.querySelectorAll('.order-item');
+    if (items.length > 1) {
+        btn.closest('.order-item').remove();
+    } else {
+        alert('Legalább egy tételt meg kell adni!');
     }
+}
 </script>
 {% endblock %}

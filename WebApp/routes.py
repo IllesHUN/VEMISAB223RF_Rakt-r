@@ -205,19 +205,23 @@ def order_detail(order_id):
         flash('Rendelés nem található!', 'danger')
         return redirect(url_for('order_list'))
 
-    
     if session.get('role') == 'megrendelo':
         if order.buyer_id != session['user_id']:
-            flash('Nincs jogosultságod ehhez a rendeléshez!', 'danger')
+            flash('⛔ Nincs jogosultságod ehhez a rendeléshez!', 'danger')
             return redirect(url_for('order_list'))
     elif session.get('role') == 'beszallito':
         if order.supplier_id != session['user_id']:
-            flash('Nincs jogosultságod ehhez a rendeléshez!', 'danger')
+            flash('⛔ Nincs jogosultságod ehhez a rendeléshez!', 'danger')
             return redirect(url_for('order_list'))
 
     is_editable = om.is_editable(order)
 
     
+    is_stock_order = bool(order.note and order.note.startswith('[RAKTÁR RENDELÉS'))
+
+    from WebApp.models.user import User
+    carriers = db.session.query(User).filter(User.role == 'fuvarozo').all()
+
     if session.get('role') == 'beszallito':
         shipments = []
     else:
@@ -229,7 +233,9 @@ def order_detail(order_id):
                            order=order,
                            is_editable=is_editable,
                            shipments=shipments,
-                           complaints=complaints)
+                           complaints=complaints,
+                           is_stock_order=is_stock_order,
+                           carriers=carriers)  
 
 
 
@@ -453,32 +459,30 @@ def shipment_detail(shipment_id):
 
 @app.route('/order/<int:order_id>/shipment/new', methods=['GET', 'POST'])
 @login_required
-@role_required('beszallito', 'admin')
+@role_required('beszallito', 'admin', 'raktaros')
 def shipment_new(order_id):
     order = om.get_order(order_id)
     if not order:
         flash('Rendelés nem található!', 'danger')
         return redirect(url_for('order_list'))
 
-    
     if order.status in ['szallitas_alatt', 'raktarba_erkezett', 'lezarva']:
-        flash('❌ Ehhez a rendeléshez már van aktív szállítmány!', 'danger')
+        flash('Ehhez a rendeléshez már van aktív szállítmány!', 'danger')
         return redirect(url_for('order_detail', order_id=order_id))
 
-    form = ShipmentForm()
-    if form.validate_on_submit():
+    if request.method == 'POST':
         shipment = sm.create_shipment(
             order_id=order_id,
-            expected_at=form.expected_at.data,
-            note=form.note.data
+            expected_at=None,   
+            note=None
         )
         if shipment:
             om.update_status(order_id, 'szallitas_alatt')
-            flash('✅ Szállítás rögzítve!', 'success')
+            flash('✅ Szállítmány létrehozva! A fuvarozó beállítja a várható érkezést.', 'success')
             return redirect(url_for('order_detail', order_id=order_id))
-        flash('❌ Hiba történt!', 'danger')
+        flash(' Hiba történt!', 'danger')
 
-    return render_template('shipment/new.html', form=form, order=order)
+    return render_template('shipment/new.html', order=order)
 
 
 @app.route('/shipment/<int:shipment_id>/status', methods=['POST'])
