@@ -3,8 +3,8 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>{% if order %}Rendelés #{{ order.id }} szerkesztése{% else %}Új rendelés leadása{% endif %}</h1>
-    <a href="{{ url_for('order_list') }}" class="btn btn-secondary">← Vissza</a>
+    <h1 class="page-title">{% if order %}Rendelés #{{ order.id }} szerkesztése{% else %}Új rendelés leadása{% endif %}</h1>
+    <a href="{{ url_for('order_list') }}" class="btn btn-ghost">← Vissza</a>
 </div>
 
 {% if order and not is_editable %}
@@ -17,7 +17,6 @@
     <form method="POST" id="orderForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <!-- Tételek -->
         <h3 style="margin-bottom: 20px;">Rendelt tételek</h3>
 
         <div id="items-container">
@@ -25,30 +24,29 @@
                 {% for item in order.items %}
                 <div class="order-item" style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 15px; margin-bottom: 15px; align-items: end;">
                     <div class="form-group" style="margin: 0;">
-                        <label>Termék</label>
-                        <select name="product_id[]" required>
+                        <label class="form-label">Termék</label>
+                        <select name="product_id[]" class="form-control product-select" required>
                             <option value="">-- Válassz terméket --</option>
                             {% for product in products %}
-                            <option value="{{ product.id }}"
-                                {% if product.id == item.product_id %}selected{% endif %}>
+                            <option value="{{ product.id }}" {% if product.id == item.product_id %}selected{% endif %}>
                                 {{ product.name }} ({{ product.sku }}) - {{ "%.0f"|format(product.price) }} Ft/{{ product.unit }}
                             </option>
                             {% endfor %}
                         </select>
+                        <div class="stock-info" style="margin-top: 6px; font-size: 13px;"></div>
                     </div>
                     <div class="form-group" style="margin: 0;">
-                        <label>Mennyiség</label>
-                        <input type="number" name="quantity[]" value="{{ item.quantity }}" min="1" required>
+                        <label class="form-label">Mennyiség</label>
+                        <input type="number" name="quantity[]" class="form-control" value="{{ item.quantity }}" min="1" max="9999" required>
                     </div>
-                    <button type="button" onclick="removeItem(this)"
-                            class="btn btn-danger btn-sm" style="margin-bottom: 0;">✖</button>
+                    <button type="button" onclick="removeItem(this)" class="btn btn-danger btn-sm">✖</button>
                 </div>
                 {% endfor %}
             {% else %}
                 <div class="order-item" style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 15px; margin-bottom: 15px; align-items: end;">
                     <div class="form-group" style="margin: 0;">
-                        <label>Termék</label>
-                        <select name="product_id[]" required>
+                        <label class="form-label">Termék</label>
+                        <select name="product_id[]" class="form-control product-select" required>
                             <option value="">-- Válassz terméket --</option>
                             {% for product in products %}
                             <option value="{{ product.id }}">
@@ -56,13 +54,13 @@
                             </option>
                             {% endfor %}
                         </select>
+                        <div class="stock-info" style="margin-top: 6px; font-size: 13px;"></div>
                     </div>
                     <div class="form-group" style="margin: 0;">
-                        <label>Mennyiség</label>
-                        <input type="number" name="quantity[]" value="1" min="1" required>
+                        <label class="form-label">Mennyiség</label>
+                        <input type="number" name="quantity[]" class="form-control" value="1" min="1" max="9999" required>
                     </div>
-                    <button type="button" onclick="removeItem(this)"
-                            class="btn btn-danger btn-sm" style="margin-bottom: 0;">✖</button>
+                    <button type="button" onclick="removeItem(this)" class="btn btn-danger btn-sm">✖</button>
                 </div>
             {% endif %}
         </div>
@@ -71,33 +69,94 @@
             + Tétel hozzáadása
         </button>
 
-        <!-- Megjegyzés -->
         <div class="form-group">
-            <label>Megjegyzés (opcionális)</label>
-            <textarea name="note" placeholder="Különleges kérések, megjegyzések...">{{ order.note if order and order.note else '' }}</textarea>
+            <label class="form-label">Megjegyzés (opcionális)</label>
+            <textarea name="note" class="form-control" placeholder="Különleges kérések, megjegyzések...">{{ order.note if order and order.note else '' }}</textarea>
         </div>
 
         <div style="display: flex; gap: 15px; margin-top: 10px;">
-            <button type="submit" class="btn btn-primary" style="padding: 12px 30px; font-size: 16px;">
+            <button type="submit" class="btn btn-primary btn-lg">
                 {% if order %}Módosítások mentése{% else %}Rendelés leadása{% endif %}
             </button>
-            <a href="{{ url_for('order_list') }}" class="btn btn-secondary" style="padding: 12px 30px;">Mégse</a>
+            <a href="{{ url_for('order_list') }}" class="btn btn-ghost btn-lg">Mégse</a>
         </div>
     </form>
 </div>
 
-<!-- Termék lista -->
-<!-- Termékadatok rejtett tárolóban -->
-<div id="product-data" data-products="{{ products | tojson | e }}" style="display:none;"></div>
+<div id="product-data" data-products='{{ products | tojson }}' style="display:none;"></div>
 
 <script>
-    const productList = JSON.parse(
+    const orderProductList = JSON.parse(
         document.getElementById('product-data').getAttribute('data-products')
     );
 
+    let stockCache = null;
+
+    async function fetchStock(forceRefresh = false) {
+        if (stockCache === null || forceRefresh) {
+            try {
+                const res = await fetch('/api/stock?t=' + Date.now());
+                const data = await res.json();
+                stockCache = {};
+                data.stock.forEach(s => {
+                    stockCache[s.product_id] = (stockCache[s.product_id] || 0) + parseInt(s.quantity);
+                });
+            } catch(e) {
+                console.error('Készlet lekérés sikertelen', e);
+                stockCache = {};
+            }
+        }
+    }
+
+    function updateStockInfo(select) {
+        const productId = parseInt(select.value);
+        const formGroup = select.closest('.form-group');
+        const infoDiv = formGroup.querySelector('.stock-info');
+        const orderItem = select.closest('.order-item');
+        const qtyInput = orderItem ? orderItem.querySelector('input[name="quantity[]"]') : null;
+
+        if (!infoDiv) return;
+
+        if (!productId) {
+            infoDiv.innerHTML = '';
+            if (qtyInput) qtyInput.max = 9999;
+            return;
+        }
+
+        const total = stockCache[productId] || 0;
+
+        if (qtyInput) {
+            qtyInput.max = total > 0 ? total : 0;
+        }
+
+        if (total === 0) {
+            infoDiv.innerHTML = `<span style="color: var(--danger);">⚠️ Nincs készleten — rendelés nem lehetséges</span>`;
+        } else if (total < 10) {
+            infoDiv.innerHTML = `<span style="color: var(--warning);">⚠️ Alacsony készlet: maximum <strong>${total} db</strong> rendelhető</span>`;
+        } else {
+            infoDiv.innerHTML = `<span style="color: var(--success);">✔ Készleten: maximum <strong>${total} db</strong> rendelhető</span>`;
+        }
+    }
+
+    function bindSelectEvents(select) {
+        select.addEventListener('change', async function () {
+            await fetchStock(true);
+            updateStockInfo(this);
+        });
+        if (select.value) {
+            fetchStock(true).then(() => updateStockInfo(select));
+        }
+    }
+
+    // ← IDE kerül, ez váltja fel a régi sort:
+    document.addEventListener('DOMContentLoaded', async function() {
+        await fetchStock(true);
+        document.querySelectorAll('.product-select').forEach(bindSelectEvents);
+    });
+
     function getProductOptions(selectedId = null) {
         let options = '<option value="">-- Válassz terméket --</option>';
-        productList.forEach(p => {
+        orderProductList.forEach(p => {
             const selected = (selectedId && p.id == selectedId) ? 'selected' : '';
             options += `<option value="${p.id}" ${selected}>${p.name} (${p.sku}) - ${Math.round(p.price)} Ft/${p.unit}</option>`;
         });
@@ -108,19 +167,21 @@
         const container = document.getElementById('items-container');
         const div = document.createElement('div');
         div.className = 'order-item';
-        div.style = 'display: grid; grid-template-columns: 2fr 1fr auto; gap: 15px; margin-bottom: 15px; align-items: end;';
+        div.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr auto; gap: 15px; margin-bottom: 15px; align-items: end;';
         div.innerHTML = `
             <div class="form-group" style="margin: 0;">
-                <label>Termék</label>
-                <select name="product_id[]" required>${getProductOptions()}</select>
+                <label class="form-label">Termék</label>
+                <select name="product_id[]" class="form-control product-select" required>${getProductOptions()}</select>
+                <div class="stock-info" style="margin-top: 6px; font-size: 13px;"></div>
             </div>
             <div class="form-group" style="margin: 0;">
-                <label>Mennyiség</label>
-                <input type="number" name="quantity[]" value="1" min="1" required>
+                <label class="form-label">Mennyiség</label>
+                <input type="number" name="quantity[]" class="form-control" value="1" min="1" max="9999" required>
             </div>
-            <button type="button" onclick="removeItem(this)" class="btn btn-danger btn-sm" style="margin-bottom: 0;">✖</button>
+            <button type="button" onclick="removeItem(this)" class="btn btn-danger btn-sm">✖</button>
         `;
         container.appendChild(div);
+        bindSelectEvents(div.querySelector('.product-select'));
     }
 
     function removeItem(btn) {

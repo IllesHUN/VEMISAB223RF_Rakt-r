@@ -47,6 +47,7 @@
                     <td style="color: #adb5bd;">Létrehozva:</td>
                     <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                 </tr>
+                {% if session.get('role') != 'beszallito' %}
                 <tr>
                     <td style="color: #adb5bd;">Módosítható:</td>
                     <td>
@@ -57,7 +58,8 @@
                         {% endif %}
                     </td>
                 </tr>
-                {% if order.note %}
+                {% endif %}
+                {% if order.note and session.get('role') != 'beszallito' %}
                 <tr>
                     <td style="color: #adb5bd;">Megjegyzés:</td>
                     <td>{{ order.note }}</td>
@@ -72,6 +74,7 @@
     <div class="card">
         <h3>Státusz módosítása</h3>
         <form method="POST" action="{{ url_for('order_status_update', order_id=order.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label>Új státusz</label>
                 <select name="status">
@@ -97,9 +100,15 @@
     {% if session.get('role') == 'beszallito' %}
     <div class="card">
         <h3>Szállítás rögzítése</h3>
-        <a href="{{ url_for('shipment_new', order_id=order.id) }}" class="btn btn-success" style="width: 100%; text-align: center; padding: 12px;">
-            + Szállítási űrlap kitöltése
-        </a>
+        {% if order.status == 'feldolgozas_alatt' and not shipments %}
+            <a href="{{ url_for('shipment_new', order_id=order.id) }}" class="btn btn-success" style="width: 100%; text-align: center; padding: 12px;">
+                + Szállítási űrlap kitöltése
+            </a>
+        {% else %}
+            <p style="color: #adb5bd; font-style: italic;">
+                Már van aktív szállítmány ehhez a rendeléshez.
+            </p>
+        {% endif %}
     </div>
     {% endif %}
 </div>

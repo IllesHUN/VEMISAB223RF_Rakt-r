@@ -26,7 +26,7 @@ class WarehouseManager:
             raise e
 
     def add_stock(self, warehouse_id: int, product_id: int,
-                  quantity: int, location_code: str):
+                quantity: int, location_code: str):
         """Áru beérkezése / készlet növelése."""
         location = self.__db.session.query(StorageLocation).filter(
             StorageLocation.warehouse_id == warehouse_id,
@@ -35,9 +35,22 @@ class WarehouseManager:
 
         try:
             if location:
+                # Már létező termék — csak növeljük, kód nem változhat
                 location.quantity += quantity
-                location.updated_at = text("UTC_TIMESTAMP()")
             else:
+                # Új termék — ellenőrizzük a kód formátumát és egyediségét
+                import re
+                if not re.match(r'^[A-Z]-\d{2}-\d{3}$', location_code):
+                    raise ValueError("Érvénytelen tároló kód formátum! (pl. A-01-001)")
+
+                existing_code = self.__db.session.query(StorageLocation).filter(
+                    StorageLocation.warehouse_id == warehouse_id,
+                    StorageLocation.code == location_code,
+                    StorageLocation.quantity > 0  
+                ).first()
+                if existing_code:
+                    raise ValueError(f"A '{location_code}' tároló kód már foglalt!")
+
                 location = StorageLocation(
                     warehouse_id=warehouse_id,
                     product_id=product_id,
@@ -45,6 +58,7 @@ class WarehouseManager:
                     quantity=quantity
                 )
                 self.__db.session.add(location)
+
             self.__db.session.commit()
             return location
         except Exception as e:
@@ -72,5 +86,6 @@ class WarehouseManager:
     def get_stock(self, warehouse_id: int, page=1, per_page=20):
         """Raktár készletének lekérdezése."""
         return self.__db.session.query(StorageLocation).filter(
-            StorageLocation.warehouse_id == warehouse_id
+            StorageLocation.warehouse_id == warehouse_id,
+            StorageLocation.quantity > 0
         ).paginate(page=page, per_page=per_page, error_out=False)

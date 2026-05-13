@@ -4,6 +4,9 @@
 {% block content %}
 <div class="page-header">
     <h1>Elérhető termékek</h1>
+    {% if session.get('role') in ['admin', 'raktaros'] %}
+    <a href="{{ url_for('product_new') }}" class="btn btn-primary">+ Új termék</a>
+    {% endif %}
 </div>
 
 <div class="card">
@@ -15,6 +18,9 @@
                 <th>Leírás</th>
                 <th>Egység</th>
                 <th>Ár</th>
+                {% if session.get('role') in ['admin', 'raktaros'] %}
+                <th>Műveletek</th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
@@ -25,10 +31,15 @@
                 <td>{{ p.description or '—' }}</td>
                 <td>{{ p.unit }}</td>
                 <td>{{ "{:,.0f}".format(p.price) }} Ft</td>
+                {% if session.get('role') in ['admin', 'raktaros'] %}
+                <td>
+                    <a href="{{ url_for('product_edit', product_id=p.id) }}" class="btn btn-secondary btn-sm">Szerkesztés</a>
+                </td>
+                {% endif %}
             </tr>
             {% else %}
             <tr>
-                <td colspan="5" style="text-align:center; color:#aaa;">
+                <td colspan="6" style="text-align:center; color:#aaa;">
                     Nincs elérhető termék.
                 </td>
             </tr>

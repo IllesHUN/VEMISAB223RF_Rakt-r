@@ -22,51 +22,86 @@
                     <td>{{ warehouse.address or 'Nincs megadva' }}</td>
                 </tr>
                 <tr>
-                    <td style="color: #adb5bd;">Kapacitás:</td>
-                    <td>{{ warehouse.capacity or 'Nincs megadva' }}</td>
-                </tr>
-                <tr>
-                    <td style="color: #adb5bd;">Tárhelyek:</td>
-                    <td><strong style="color: #e94560;">{{ warehouse.locations|length }} db</strong></td>
+                    <td style="color: #adb5bd;">Termékszám:</td>
+                    <td><strong style="color: #e94560;">{{ stock.total }} db</strong></td>
                 </tr>
             </tbody>
         </table>
     </div>
 
-    <!-- Áru beérkezés -->
+    <!-- Áru beérkeztetése -->
     <div class="card">
         <h3>Áru beérkeztetése</h3>
+
+        {% if receivable_items %}
         <form method="POST" action="{{ url_for('warehouse_add_stock', warehouse_id=warehouse.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="form-group">
-                <label>Termék</label>
-                <select name="product_id" required>
-                    <option value="">-- Válassz terméket --</option>
-                    {% for item in stock.items %}
-                        <option value="{{ item.product.id if item.product else '' }}">
-                            {{ item.product.name if item.product else 'Ismeretlen' }}
-                            (készlet: {{ item.quantity }} db)
-                        </option>
+            <input type="hidden" name="bulk_receive" value="1">
+
+            <table style="margin-bottom: 16px; font-size: 14px;">
+                <thead>
+                    <tr>
+                        <th>Termék</th>
+                        <th>Mennyiség</th>
+                        <th>Tároló kód</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in receivable_items %}
+                    <tr>
+                        <td>
+                            <strong>{{ item.product_name }}</strong>
+                            <br>
+                            <small style="color: #adb5bd;">
+                                {{ item.product_sku }} · #{{ item.order_id }}
+                            </small>
+                            <input type="hidden" name="product_ids" value="{{ item.product_id }}">
+                            <input type="hidden" name="quantities" value="{{ item.quantity }}">
+                            <input type="hidden" name="order_ids" value="{{ item.order_id }}">
+                        </td>
+                        <td>
+                            <strong style="color: #e94560;">
+                                {{ item.quantity }} {{ item.product_unit }}
+                            </strong>
+                        </td>
+                        <td>
+                            {% if item.product_id in existing_codes %}
+                                <input type="text"
+                                       name="location_codes"
+                                       value="{{ existing_codes[item.product_id] }}"
+                                       class="form-control"
+                                       readonly
+                                       style="opacity:0.6; cursor:not-allowed; width:130px; font-family:monospace;">
+                                <small style="color:#69db7c;">✅ Meglévő</small>
+                            {% else %}
+                                <input type="text"
+                                       name="location_codes"
+                                       class="form-control location-new"
+                                       placeholder="A-01-001"
+                                       required
+                                       style="width:130px; font-family:monospace;"
+                                       data-pid="{{ item.product_id }}">
+                                <small id="err_{{ item.product_id }}"
+                                       style="color:#ff6b6b; display:none; font-size:12px;">
+                                    Formátum: A-01-001
+                                </small>
+                            {% endif %}
+                        </td>
+                    </tr>
                     {% endfor %}
-                    {% for product in all_products %}
-                        {% if product.id not in stock.items|map(attribute='product_id')|list %}
-                        <option value="{{ product.id }}">{{ product.name }} (új)</option>
-                        {% endif %}
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Mennyiség</label>
-                <input type="number" name="quantity" min="1" value="1" required>
-            </div>
-            <div class="form-group">
-                <label>Tároló kód (pl. A-01-001)</label>
-                <input type="text" name="location_code" placeholder="A-01-001">
-            </div>
+                </tbody>
+            </table>
+
             <button type="submit" class="btn btn-success" style="width: 100%;">
-                Beérkeztetés
+                ✅ Beérkeztetés
             </button>
         </form>
+
+        {% else %}
+        <p style="color: #adb5bd; font-style: italic;">
+            Nincs beérkeztethető tétel jelenleg.
+        </p>
+        {% endif %}
     </div>
 </div>
 
@@ -86,11 +121,11 @@
                 <th>Tároló kód</th>
                 <th>Készlet</th>
                 <th>Egység</th>
-                <th>Műveletek</th>
             </tr>
         </thead>
         <tbody>
             {% for item in stock.items %}
+            {% if item.quantity > 0 %}
             <tr>
                 <td><strong>{{ item.product.name if item.product else 'Ismeretlen' }}</strong></td>
                 <td style="color: #adb5bd;">{{ item.product.sku if item.product else '-' }}</td>
@@ -99,26 +134,10 @@
                         {{ item.code }}
                     </span>
                 </td>
-                <td>
-                        
-
-                </td>
+                <td><strong>{{ item.quantity }}</strong></td>
                 <td>{{ item.product.unit if item.product else 'db' }}</td>
-                <td>
-                    <form method="POST" action="{{ url_for('warehouse_remove_stock', warehouse_id=warehouse.id) }}"
-                          style="display: inline-flex; gap: 8px; align-items: center;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="product_id" value="{{ item.product_id }}">
-                        <input type="number" name="quantity" value="1" min="1" max="{{ item.quantity }}"
-                               style="width: 70px; padding: 5px; background: #0f3460; border: 1px solid #1a4a7a;
-                                      color: #e0e0e0; border-radius: 4px;">
-                        <button type="submit" class="btn btn-danger btn-sm"
-                                onclick="return confirm('Biztosan kiadod az árut?')">
-                            Kiadás
-                        </button>
-                    </form>
-                </td>
             </tr>
+            {% endif %}
             {% endfor %}
         </tbody>
     </table>
@@ -128,7 +147,6 @@
         {% if stock.has_prev %}
         <li><a href="{{ url_for('warehouse_detail', warehouse_id=warehouse.id, page=stock.prev_num) }}">« Előző</a></li>
         {% endif %}
-
         {% for page_num in stock.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
             {% if page_num %}
                 {% if page_num == stock.page %}
@@ -140,17 +158,31 @@
                 <li>...</li>
             {% endif %}
         {% endfor %}
-
         {% if stock.has_next %}
         <li><a href="{{ url_for('warehouse_detail', warehouse_id=warehouse.id, page=stock.next_num) }}">Következő »</a></li>
         {% endif %}
     </ul>
 
     {% else %}
-    <p style="color: #adb5bd; font-style: italic; padding: 20px 0;">
-        A raktár üres ඞ.
-    </p>
+    <p style="color: #adb5bd; font-style: italic; padding: 20px 0;">A raktár üres.</p>
     {% endif %}
 </div>
 
+<script>
+const codeRegex = /^[A-Z]{1,3}-\d{2}-\d{3}$/;
+document.querySelectorAll('.location-new').forEach(input => {
+    const pid = input.dataset.pid;
+    const errDiv = document.getElementById('err_' + pid);
+    input.addEventListener('input', function () {
+        if (!errDiv) return;
+        if (this.value && !codeRegex.test(this.value)) {
+            errDiv.style.display = 'block';
+            this.style.borderColor = '#ff6b6b';
+        } else {
+            errDiv.style.display = 'none';
+            this.style.borderColor = '';
+        }
+    });
+});
+</script>
 {% endblock %}

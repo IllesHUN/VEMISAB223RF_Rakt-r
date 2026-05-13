@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>Rendelések</h1>
+    <h1>{% if session.get('role') == 'beszallito' %}Készletrendeléseim{% else %}Rendelések{% endif %}</h1>
     {% if session.get('role') in ['megrendelo', 'admin'] %}
         <a href="{{ url_for('order_new') }}" class="btn btn-primary">+ Új rendelés</a>
     {% endif %}
@@ -39,7 +39,9 @@
             <th>Beszállító</th>
             {% endif %}
             <th>Tételek száma</th>
+            {% if session.get('role') not in ['beszallito'] %}
             <th>Megjegyzés</th>
+            {% endif %}
             <th>Dátum</th>
             <th>Műveletek</th>
         </tr>
@@ -63,7 +65,9 @@
             <td>{{ order.supplier.name if order.supplier else '<em style="color:#adb5bd;">Nincs</em>' | safe }}</td>
             {% endif %}
             <td style="text-align: center;">{{ order.items|length }} db</td>
+            {% if session.get('role') != 'beszallito' %}
             <td>{{ order.note[:40] if order.note else '-' }}{% if order.note and order.note|length > 40 %}...{% endif %}</td>
+            {% endif %}
             <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
             <td>
                 <a href="{{ url_for('order_detail', order_id=order.id) }}" class="btn btn-info btn-sm">Részletek</a>

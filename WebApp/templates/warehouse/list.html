@@ -24,19 +24,19 @@
                 <td style="color: #adb5bd; width: 120px;">Cím:</td>
                 <td>{{ warehouse.address or 'Nincs megadva' }}</td>
             </tr>
-            <tr>
+            <!-- <tr>
                 <td style="color: #adb5bd;">Kapacitás:</td>
                 <td>{{ warehouse.capacity or 'Nincs megadva' }}</td>
-            </tr>
+            </tr> -->
             <tr>
-                <td style="color: #adb5bd;">Tárhelyek:</td>
-                <td><strong style="color: #e94560;">{{ warehouse.locations|length }} db</strong></td>
+                <td style="color: #adb5bd;">Termékszám:</td>
+                <td><strong style="color: #e94560;">{{ stock_counts[warehouse.id] }} db</strong></td>
             </tr>
         </tbody>
     </table>
     <div style="margin-top: 15px;">
         <a href="{{ url_for('warehouse_detail', warehouse_id=warehouse.id) }}"
-           class="btn btn-info btn-sm">Készlet megtekintése</a>
+           class="btn btn-info btn-sm">Részletek</a>
     </div>
 </div>
 {% endfor %}

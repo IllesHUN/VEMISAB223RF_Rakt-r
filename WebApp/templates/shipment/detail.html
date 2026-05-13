@@ -66,21 +66,50 @@
 
     <!-- Műveletek -->
     <div style="display: flex; flex-direction: column; gap: 20px;">
+        {% if session.get('role') == 'fuvarozo' %}
+        <div class="card">
+            <h3>Várható érkezés</h3>
+            {% if shipment.expected_at %}
+                <p style="color: #adb5bd;">Beállítva: <strong style="color: #fff;">{{ shipment.expected_at.strftime('%Y-%m-%d') }}</strong></p>
+                <small style="color: #6c757d;">Már nem módosítható.</small>
+            {% else %}
+                <form method="POST" action="{{ url_for('shipment_set_expected', shipment_id=shipment.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-group">
+                        <label>Dátum</label>
+                        <input type="date" name="expected_at" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-secondary" style="width: 100%;">Mentés</button>
+                </form>
+            {% endif %}
+        </div>
+        {% endif %}
 
         <!-- Fuvarozó állapot frissítés -->
         {% if session.get('role') in ['fuvarozo', 'admin'] %}
         <div class="card">
             <h3>Fuvar állapotának módosítása</h3>
-            <form method="POST" action="{{ url_for('shipment_status_update', shipment_id=shipment.id) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="form-group">
-                    {{ status_form.status.label }}
-                    {{ status_form.status(class="form-control") }}
-                </div>
-                <button type="submit" class="btn btn-warning" style="width: 100%;">
-                    Állapot mentése
-                </button>
-            </form>
+            {% if shipment.status == 'megerkezett' %}
+                <span class="badge badge-megerkezett" style="font-size: 1rem; padding: 8px 16px;">
+                    ✅ Megérkezett — lezárva
+                </span>
+            {% else %}
+                <form method="POST" action="{{ url_for('shipment_update_status', shipment_id=shipment.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-group">
+                        <label>Új státusz</label>
+                        <select name="status" class="form-control">
+                            <option value="elokeszitve" {% if shipment.status == 'elokeszitve' %}selected{% endif %}>Előkészítve</option>
+                            <option value="uton" {% if shipment.status == 'uton' %}selected{% endif %}>Úton</option>
+                            <option value="megerkezett" {% if shipment.status == 'megerkezett' %}selected{% endif %}>Megérkezett</option>
+                            <option value="sikertelen" {% if shipment.status == 'sikertelen' %}selected{% endif %}>Sikertelen</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-warning" style="width: 100%;">
+                        Állapot mentése
+                    </button>
+                </form>
+            {% endif %}
         </div>
         {% endif %}
 
@@ -92,7 +121,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label>Fuvarozó kiválasztása</label>
-                    <select name="carrier_id">
+                    <select name="carrier_id" class="form-control">
                         <option value="">-- Válassz fuvarozót --</option>
                         {% for carrier in carriers %}
                         <option value="{{ carrier.id }}"

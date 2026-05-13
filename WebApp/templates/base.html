@@ -325,28 +325,38 @@
 
     <div class="nav-links">
         {% if session.get('user_id') %}
-            <a href="{{ url_for('index') }}">Főoldal</a>
-            <a href="{{ url_for('order_list') }}">Rendelések</a>
+            {% if session.get('role') == 'beszallito' %}
+                <a href="{{ url_for('order_list') }}">Készletrendelések</a>
+                <a href="{{ url_for('profile') }}">Profil</a>
+            {% else %}
+                <a href="{{ url_for('index') }}">Főoldal</a>
+                {% if session.get('role') != 'fuvarozo' %}
+                    <a href="{{ url_for('order_list') }}">Rendelések</a>
+                {% endif %}
 
-            {% if session.get('role') in ['fuvarozo', 'raktaros', 'admin'] %}
-                <a href="{{ url_for('shipment_list') }}">Szállítmányok</a>
+                {% if session.get('role') in ['fuvarozo', 'raktaros', 'admin'] %}
+                    <a href="{{ url_for('shipment_list') }}">Szállítmányok</a>
+                {% endif %}
+
+                {% if session.get('role') in ['raktaros', 'admin'] %}
+                    <a href="{{ url_for('warehouse_list') }}">Raktárak</a>
+                {% endif %}
+
+                {% if session.get('role') in ['megrendelo', 'admin', 'raktaros'] %}
+                    <a href="{{ url_for('complaint_list') }}">Reklamációk</a>
+                {% endif %}
+
+                {% if session.get('role') == 'admin' %}
+                    <a href="{{ url_for('admin_stats') }}">Statisztikák</a>
+                {% endif %}
+
+                {% if session.get('role') in ['raktaros', 'admin'] %}
+                    <a href="{{ url_for('stock_order_list') }}">Készletrendelések</a>
+                {% endif %}
+
+                <a href="{{ url_for('product_list') }}">Termékek</a>
+                <a href="{{ url_for('profile') }}">Profil</a>
             {% endif %}
-
-            {% if session.get('role') in ['raktaros', 'admin'] %}
-                <a href="{{ url_for('warehouse_list') }}">Raktárak</a>
-            {% endif %}
-
-            {% if session.get('role') in ['megrendelo', 'admin','raktaros'] %}
-                <a href="{{ url_for('complaint_list') }}">Reklamációk</a>
-            {% endif %}
-
-            {% if session.get('role') == 'admin' %}
-                <a href="{{ url_for('admin_stats') }}">Statisztikák</a>
-            {% endif %}
-            <a href="{{ url_for('product_list') }}">Termékek</a>
-
-
-            <a href="{{ url_for('profile') }}">Profil</a>
 
             <span class="role-badge">{{ session.get('role') }}</span>
             <a href="{{ url_for('logout') }}">Kijelentkezés</a>
@@ -372,6 +382,19 @@
 <div class="container">
     {% block content %}{% endblock %}
 </div>
-
+<script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const csrfToken = "{{ csrf_token() }}";
+            document.querySelectorAll('form[method="POST"], form[method="post"]').forEach(function(form) {
+                if (!form.querySelector('input[name="csrf_token"]')) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'csrf_token';
+                    input.value = csrfToken;
+                    form.appendChild(input);
+                }
+            });
+        });
+    </script>
 </body>
 </html>
