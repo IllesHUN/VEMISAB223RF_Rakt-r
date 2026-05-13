@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}- {{ 'Termék szerkesztése' if product else 'Új termék' }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ 'Termék szerkesztése' if product else 'Új termék' }}</h1>
+    </div>
+    <a href="{{ url_for('product_list') }}" class="btn btn-ghost">Vissza</a>
+</div>
+
+<div style="max-width: 480px;">
+    <div class="card">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label class="form-label">Név</label>
+                <input type="text" name="name" class="form-control"
+                       value="{{ product.name if product else '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">SKU</label>
+                <input type="text" name="sku" class="form-control"
+                       value="{{ product.sku if product else '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Leírás</label>
+                <textarea name="description" class="form-control">{{ product.description if product else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Egység</label>
+                <input type="text" name="unit" class="form-control"
+                       value="{{ product.unit if product else 'db' }}">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Ár (Ft)</label>
+                <input type="number" step="0.01" name="price" class="form-control"
+                       value="{{ product.price if product else '0' }}">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                <button type="submit" class="btn btn-primary">Mentés</button>
+                <a href="{{ url_for('product_list') }}" class="btn btn-ghost">Mégse</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
