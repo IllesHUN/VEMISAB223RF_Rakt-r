@@ -59,7 +59,7 @@
                     </td>
                 </tr>
                 {% endif %}
-                {% if order.note and session.get('role') != 'beszallito' %}
+                {% if order.note and session.get('role') != 'beszallito' and not is_stock_order %}
                 <tr>
                     <td style="color: #adb5bd;">Megjegyzés:</td>
                     <td>{{ order.note }}</td>
@@ -69,32 +69,61 @@
         </table>
     </div>
 
-    <!-- Státusz váltás (raktáros/admin) -->
     {% if session.get('role') in ['raktaros', 'admin'] %}
-    <div class="card">
-        <h3>Státusz módosítása</h3>
-        <form method="POST" action="{{ url_for('order_status_update', order_id=order.id) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="form-group">
-                <label>Új státusz</label>
-                <select name="status">
+<div class="card">
+    <h3>Státusz módosítása</h3>
+    <form method="POST" action="{{ url_for('order_status_update', order_id=order.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+            <label>Új státusz</label>
+            <select name="status">
+                {% if is_stock_order %}
+                    <option value="raktarba_erkezett" {% if order.status == 'raktarba_erkezett' %}selected{% endif %}>Raktárba érkezett</option>
+                    <option value="lezarva" {% if order.status == 'lezarva' %}selected{% endif %}>Lezárva</option>
+                {% else %}
                     <option value="feldolgozas_alatt" {% if order.status == 'feldolgozas_alatt' %}selected{% endif %}>Feldolgozás alatt</option>
                     <option value="szallitas_alatt" {% if order.status == 'szallitas_alatt' %}selected{% endif %}>Szállítás alatt</option>
                     <option value="raktarba_erkezett" {% if order.status == 'raktarba_erkezett' %}selected{% endif %}>Raktárba érkezett</option>
                     <option value="lezarva" {% if order.status == 'lezarva' %}selected{% endif %}>Lezárva</option>
+                {% endif %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-warning" style="width: 100%;">Státusz mentése</button>
+    </form>
+
+    {% if not is_stock_order %}
+    <hr style="border-color: #0f3460; margin: 20px 0;">
+    <h3>Fuvarozó hozzárendelése</h3>
+    {% if shipments %}
+        {% set active_shipment = shipments[0] %}
+        <form method="POST" action="{{ url_for('assign_carrier', shipment_id=active_shipment.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label>Fuvarozó</label>
+                <select name="carrier_id" class="form-control">
+                    <option value="">-- Válassz fuvarozót --</option>
+                    {% for carrier in carriers %}
+                    <option value="{{ carrier.id }}" {% if active_shipment.carrier_id == carrier.id %}selected{% endif %}>
+                        {{ carrier.name }}
+                    </option>
+                    {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="btn btn-warning" style="width: 100%;">Státusz mentése</button>
+            <button type="submit" class="btn btn-success" style="width: 100%;">
+                Fuvarozó hozzárendelése
+            </button>
         </form>
-
-        <!-- Fuvarozó hozzárendelés -->
-        <hr style="border-color: #0f3460; margin: 20px 0;">
-        <h3>Szállítmány indítása</h3>
-        <a href="{{ url_for('shipment_new', order_id=order.id) }}" class="btn btn-success" style="width: 100%; text-align: center;">
-            + Szállítás rögzítése
+    {% else %}
+        <p style="color: #adb5bd; font-style: italic; margin-bottom: 12px;">
+            Még nincs szállítmány ehhez a rendeléshez.
+        </p>
+        <a href="{{ url_for('shipment_new', order_id=order.id) }}" class="btn btn-secondary" style="width: 100%; text-align: center;">
+            + Szállítmány létrehozása
         </a>
-    </div>
     {% endif %}
+    {% endif %}
+</div>
+{% endif %}
 
     <!-- Szállítás rögzítés (beszállító) -->
     {% if session.get('role') == 'beszallito' %}
@@ -157,8 +186,8 @@
     {% endif %}
 </div>
 
-<!-- Szállítmányok -->
-{% if shipments %}
+<!-- Kapcsolódó szállítmányok -->
+{% if shipments and not is_stock_order %}
 <div class="card">
     <h3>Kapcsolódó szállítmányok</h3>
     <table>
@@ -191,7 +220,7 @@
 {% endif %}
 
 <!-- Reklamációk -->
-{% if session.get('role') in ['megrendelo', 'admin'] %}
+{% if session.get('role') in ['megrendelo', 'admin'] and not is_stock_order %}
 <div class="card">
     <div class="page-header">
         <h3>Reklamációk</h3>

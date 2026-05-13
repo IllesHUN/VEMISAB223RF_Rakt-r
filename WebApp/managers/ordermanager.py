@@ -70,10 +70,6 @@ class OrderManager:
 
     def create_order(self, buyer_id: int, items: list, note: str = None):
         try:
-            ok, error = self._check_stock(items)
-            if not ok:
-                raise ValueError(error)
-
             order = Order(buyer_id=buyer_id, note=note)
             self.__db.session.add(order)
             self.__db.session.flush()
@@ -92,7 +88,7 @@ class OrderManager:
         except Exception as e:
             self.__db.session.rollback()
             raise e
-
+        
     def update_order(self, order_id: int, items: list, note: str = None):
         order = self.get_order(order_id)
         if not order:

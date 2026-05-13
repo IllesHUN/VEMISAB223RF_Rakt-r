@@ -36,7 +36,6 @@
             <th>Státusz</th>
             {% if session.get('role') in ['raktaros', 'admin'] %}
             <th>Megrendelő</th>
-            <th>Beszállító</th>
             {% endif %}
             <th>Tételek száma</th>
             {% if session.get('role') not in ['beszallito'] %}
